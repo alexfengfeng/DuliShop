@@ -33,4 +33,7 @@
   "Packed": "Packed",
   "New": "New",
   "Returning": "Returning"
+  ,
+  "Cancelled": "Cancelled",
+  "Open": "Open"
 }

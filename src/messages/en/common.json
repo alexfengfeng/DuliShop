@@ -12,7 +12,16 @@
     "markPaid": "Mark paid",
     "fulfill": "Fulfill",
     "install": "Install",
-    "uninstall": "Uninstall"
+    "uninstall": "Uninstall",
+    "edit": "Edit",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "details": "Details",
+    "bulkUpdate": "Bulk update",
+    "createReturn": "Create return",
+    "adjustInventory": "Adjust inventory",
+    "archive": "Archive",
+    "saveChanges": "Save changes"
   },
   "language": {
     "label": "Language",
@@ -27,6 +36,8 @@
     "records": "{count} records",
     "searchFor": "Search: {query}",
     "allOrders": "All orders",
-    "unassigned": "Unassigned"
+    "unassigned": "Unassigned",
+    "selected": "{count} selected",
+    "confirmDelete": "This will remove or archive the record. Continue?"
   }
 }

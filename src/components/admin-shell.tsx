@@ -53,7 +53,7 @@ export async function AdminShell({ children }: { children: React.ReactNode }) {
       </aside>
       <div className="min-w-0">
         <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-3 border-b border-[#dfe7df] bg-white/90 px-4 backdrop-blur">
-          <form action="/admin/orders" className="w-full max-w-xl">
+          <form action="/admin/search" className="w-full max-w-xl">
             <input
               name="query"
               placeholder={t("shell.searchPlaceholder")}

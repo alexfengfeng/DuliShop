@@ -6,12 +6,14 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { CART_COOKIE, getCart, getStore } from "@/lib/data";
+import { CART_COOKIE, getCart, getHomeTheme, getStore } from "@/lib/data";
 import { prisma } from "@/lib/prisma";
 import { slugify } from "@/lib/format";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getStripe } from "@/lib/stripe";
 import { isAppLocale, localeCookieName } from "@/i18n/routing";
+import { getCurrentStoreId, logActivity, normalizeOptionalRelation, revalidateResource } from "@/lib/admin/crud";
+import { resourceSchemas, safeReference, type ResourceName } from "@/lib/admin/schemas";
 
 const productSchema = z.object({
   title: z.string().min(2),
@@ -112,6 +114,538 @@ export async function archiveProduct(formData: FormData) {
   revalidatePath("/admin/products");
 }
 
+function formObject(formData: FormData) {
+  return Object.fromEntries(formData.entries());
+}
+
+function getResource(formData: FormData): ResourceName {
+  const resource = String(formData.get("resource") || "");
+  if (!(resource in resourceSchemas)) {
+    throw new Error(`Unsupported resource: ${resource}`);
+  }
+  return resource as ResourceName;
+}
+
+export async function createResource(formData: FormData) {
+  const storeId = await getCurrentStoreId();
+  const resource = getResource(formData);
+  const input = formObject(formData);
+
+  switch (resource) {
+    case "product": {
+      const data = resourceSchemas.product.create.parse(input);
+      const handle = slugify(data.title);
+      const product = await prisma.product.create({
+        data: {
+          storeId,
+          title: data.title,
+          handle,
+          description: data.description,
+          category: data.category,
+          status: data.status,
+          mediaColor: data.mediaColor,
+          variants: {
+            create: {
+              sku: `${handle.slice(0, 3).toUpperCase()}-${Date.now().toString().slice(-4)}`,
+              color: "Natural",
+              size: "M",
+              price: data.price,
+              inventory: data.inventory,
+              status: "Active",
+            },
+          },
+        },
+      });
+      await logActivity(storeId, "Created product", product.title);
+      break;
+    }
+    case "productVariant": {
+      const data = resourceSchemas.productVariant.create.parse(input);
+      const variant = await prisma.productVariant.create({ data });
+      await logActivity(storeId, "Created product variant", variant.sku);
+      break;
+    }
+    case "customer": {
+      const data = resourceSchemas.customer.create.parse(input);
+      const customer = await prisma.customer.create({ data: { storeId, ...data, ltv: 0 } });
+      await logActivity(storeId, "Created customer", customer.email);
+      break;
+    }
+    case "payout": {
+      const data = resourceSchemas.payout.create.parse(input);
+      const payout = await prisma.payout.create({
+        data: { storeId, ...data, reference: safeReference("POUT", data.reference) },
+      });
+      await logActivity(storeId, "Created payout", payout.reference);
+      break;
+    }
+    case "transaction": {
+      const data = resourceSchemas.transaction.create.parse(input);
+      const transaction = await prisma.transaction.create({
+        data: { storeId, ...data, reference: safeReference("TXN", data.reference) },
+      });
+      await logActivity(storeId, "Created transaction", transaction.reference);
+      break;
+    }
+    case "chargeback": {
+      const data = resourceSchemas.chargeback.create.parse(input);
+      const chargeback = await prisma.chargeback.create({
+        data: { storeId, ...data, caseNumber: safeReference("CB", data.caseNumber) },
+      });
+      await logActivity(storeId, "Created chargeback", chargeback.caseNumber);
+      break;
+    }
+    case "supplier": {
+      const data = resourceSchemas.supplier.create.parse(input);
+      const supplier = await prisma.supplier.create({ data: { storeId, ...data } });
+      await logActivity(storeId, "Created supplier", supplier.name);
+      break;
+    }
+    case "purchaseOrder": {
+      const data = resourceSchemas.purchaseOrder.create.parse(input);
+      const po = await prisma.purchaseOrder.create({
+        data: {
+          storeId,
+          reference: safeReference("PO", data.reference),
+          supplierId: normalizeOptionalRelation(data.supplierId),
+          expectedAt: data.expectedAt,
+          amount: data.amount,
+          status: data.status,
+        },
+      });
+      await logActivity(storeId, "Created purchase order", po.reference);
+      break;
+    }
+    case "transfer": {
+      const data = resourceSchemas.transfer.create.parse(input);
+      const transfer = await prisma.transfer.create({
+        data: { storeId, ...data, reference: safeReference("TR", data.reference) },
+      });
+      await logActivity(storeId, "Created transfer", transfer.reference);
+      break;
+    }
+    case "inventoryMovement": {
+      const data = resourceSchemas.inventoryMovement.create.parse(input);
+      const movement = await prisma.inventoryMovement.create({
+        data: {
+          storeId,
+          reference: safeReference("MOV", data.reference),
+          variantId: normalizeOptionalRelation(data.variantId),
+          kind: data.kind,
+          location: data.location,
+          quantity: data.quantity,
+          status: data.status,
+        },
+      });
+      await logActivity(storeId, "Created inventory movement", movement.reference);
+      break;
+    }
+    case "fulfillment": {
+      const data = resourceSchemas.fulfillment.create.parse(input);
+      const fulfillment = await prisma.fulfillment.create({
+        data: {
+          storeId,
+          reference: safeReference("FUL", data.reference),
+          orderId: normalizeOptionalRelation(data.orderId),
+          carrier: data.carrier,
+          status: data.status,
+        },
+      });
+      await logActivity(storeId, "Created fulfillment", fulfillment.reference);
+      break;
+    }
+    case "returnCase": {
+      const data = resourceSchemas.returnCase.create.parse(input);
+      const returnCase = await prisma.returnCase.create({
+        data: {
+          storeId,
+          caseNumber: safeReference("RMA", data.caseNumber),
+          orderId: normalizeOptionalRelation(data.orderId),
+          customer: data.customer,
+          reason: data.reason,
+          status: data.status,
+        },
+      });
+      await logActivity(storeId, "Created return case", returnCase.caseNumber);
+      break;
+    }
+    case "shippingLabel": {
+      const data = resourceSchemas.shippingLabel.create.parse(input);
+      const label = await prisma.shippingLabel.create({
+        data: {
+          storeId,
+          labelNumber: safeReference("LBL", data.labelNumber),
+          orderId: normalizeOptionalRelation(data.orderId),
+          carrier: data.carrier,
+          cost: data.cost,
+          status: data.status,
+        },
+      });
+      await logActivity(storeId, "Created shipping label", label.labelNumber);
+      break;
+    }
+    case "market": {
+      const data = resourceSchemas.market.create.parse(input);
+      const market = await prisma.market.create({ data: { storeId, ...data } });
+      await logActivity(storeId, "Created market", market.name);
+      break;
+    }
+    case "reportSnapshot": {
+      const data = resourceSchemas.reportSnapshot.create.parse(input);
+      const snapshot = await prisma.reportSnapshot.create({ data: { storeId, ...data } });
+      await logActivity(storeId, "Created report", snapshot.name);
+      break;
+    }
+    case "appInstallation": {
+      const data = resourceSchemas.appInstallation.create.parse(input);
+      const app = await prisma.appInstallation.create({ data: { storeId, ...data } });
+      await logActivity(storeId, "Created app record", app.name);
+      break;
+    }
+    default:
+      throw new Error(`Create is not supported for ${resource}`);
+  }
+
+  revalidateResource(resource);
+}
+
+export async function updateResource(formData: FormData) {
+  const storeId = await getCurrentStoreId();
+  const resource = getResource(formData);
+  const id = String(formData.get("id") || "");
+  const input = formObject(formData);
+  if (!id) throw new Error("Missing resource id");
+
+  switch (resource) {
+    case "order": {
+      const data = resourceSchemas.order.update.parse(input);
+      const order = await prisma.order.update({ where: { id }, data });
+      await logActivity(storeId, "Updated order", order.orderNumber);
+      break;
+    }
+    case "product": {
+      const data = resourceSchemas.product.update.parse(input);
+      const product = await prisma.product.update({ where: { id }, data: { ...data, handle: slugify(data.title) } });
+      await logActivity(storeId, "Updated product", product.title);
+      break;
+    }
+    case "productVariant": {
+      const data = resourceSchemas.productVariant.update.parse(input);
+      const variant = await prisma.productVariant.update({ where: { id }, data });
+      await logActivity(storeId, "Updated product variant", variant.sku);
+      break;
+    }
+    case "customer": {
+      const data = resourceSchemas.customer.update.parse(input);
+      const customer = await prisma.customer.update({ where: { id }, data });
+      await logActivity(storeId, "Updated customer", customer.email);
+      break;
+    }
+    case "payout": {
+      const data = resourceSchemas.payout.update.parse(input);
+      const payout = await prisma.payout.update({ where: { id }, data });
+      await logActivity(storeId, "Updated payout", payout.reference);
+      break;
+    }
+    case "transaction": {
+      const data = resourceSchemas.transaction.update.parse(input);
+      const transaction = await prisma.transaction.update({ where: { id }, data });
+      await logActivity(storeId, "Updated transaction", transaction.reference);
+      break;
+    }
+    case "chargeback": {
+      const data = resourceSchemas.chargeback.update.parse(input);
+      const chargeback = await prisma.chargeback.update({ where: { id }, data });
+      await logActivity(storeId, "Updated chargeback", chargeback.caseNumber);
+      break;
+    }
+    case "supplier": {
+      const data = resourceSchemas.supplier.update.parse(input);
+      const supplier = await prisma.supplier.update({ where: { id }, data });
+      await logActivity(storeId, "Updated supplier", supplier.name);
+      break;
+    }
+    case "purchaseOrder": {
+      const data = resourceSchemas.purchaseOrder.update.parse(input);
+      const po = await prisma.purchaseOrder.update({
+        where: { id },
+        data: { ...data, supplierId: normalizeOptionalRelation(data.supplierId) },
+      });
+      await logActivity(storeId, "Updated purchase order", po.reference);
+      break;
+    }
+    case "transfer": {
+      const data = resourceSchemas.transfer.update.parse(input);
+      const transfer = await prisma.transfer.update({ where: { id }, data });
+      await logActivity(storeId, "Updated transfer", transfer.reference);
+      break;
+    }
+    case "inventoryMovement": {
+      const data = resourceSchemas.inventoryMovement.update.parse(input);
+      const movement = await prisma.inventoryMovement.update({
+        where: { id },
+        data: { ...data, variantId: normalizeOptionalRelation(data.variantId) },
+      });
+      await logActivity(storeId, "Updated inventory movement", movement.reference);
+      break;
+    }
+    case "fulfillment": {
+      const data = resourceSchemas.fulfillment.update.parse(input);
+      const fulfillment = await prisma.fulfillment.update({
+        where: { id },
+        data: { ...data, orderId: normalizeOptionalRelation(data.orderId) },
+      });
+      await logActivity(storeId, "Updated fulfillment", fulfillment.reference);
+      break;
+    }
+    case "returnCase": {
+      const data = resourceSchemas.returnCase.update.parse(input);
+      const returnCase = await prisma.returnCase.update({
+        where: { id },
+        data: { ...data, orderId: normalizeOptionalRelation(data.orderId) },
+      });
+      await logActivity(storeId, "Updated return case", returnCase.caseNumber);
+      break;
+    }
+    case "shippingLabel": {
+      const data = resourceSchemas.shippingLabel.update.parse(input);
+      const label = await prisma.shippingLabel.update({
+        where: { id },
+        data: { ...data, orderId: normalizeOptionalRelation(data.orderId) },
+      });
+      await logActivity(storeId, "Updated shipping label", label.labelNumber);
+      break;
+    }
+    case "market": {
+      const data = resourceSchemas.market.update.parse(input);
+      const market = await prisma.market.update({ where: { id }, data });
+      await logActivity(storeId, "Updated market", market.name);
+      break;
+    }
+    case "reportSnapshot": {
+      const data = resourceSchemas.reportSnapshot.update.parse(input);
+      const snapshot = await prisma.reportSnapshot.update({ where: { id }, data });
+      await logActivity(storeId, "Updated report", snapshot.name);
+      break;
+    }
+    case "appInstallation": {
+      const data = resourceSchemas.appInstallation.update.parse(input);
+      const app = await prisma.appInstallation.update({ where: { id }, data });
+      await logActivity(storeId, "Updated app record", app.name);
+      break;
+    }
+  }
+
+  revalidateResource(resource);
+}
+
+export async function deleteResource(formData: FormData) {
+  const storeId = await getCurrentStoreId();
+  const resource = getResource(formData);
+  const id = String(formData.get("id") || "");
+  if (!id) throw new Error("Missing resource id");
+
+  switch (resource) {
+    case "order": {
+      const order = await prisma.order.update({
+        where: { id },
+        data: { paymentStatus: "Cancelled", fulfillmentStatus: "Cancelled", shippingStatus: "Cancelled" },
+      });
+      await logActivity(storeId, "Cancelled order", order.orderNumber);
+      break;
+    }
+    case "product": {
+      const existingOrderItem = await prisma.orderItem.findFirst({ where: { productId: id } });
+      if (existingOrderItem) {
+        const product = await prisma.product.update({ where: { id }, data: { status: "Archived" } });
+        await logActivity(storeId, "Archived product", product.title);
+      } else {
+        const product = await prisma.product.delete({ where: { id } });
+        await logActivity(storeId, "Deleted product", product.title);
+      }
+      break;
+    }
+    case "productVariant": {
+      const existingOrderItem = await prisma.orderItem.findFirst({ where: { variantId: id } });
+      if (existingOrderItem) {
+        const variant = await prisma.productVariant.update({ where: { id }, data: { status: "Archived" } });
+        await logActivity(storeId, "Archived product variant", variant.sku);
+      } else {
+        const variant = await prisma.productVariant.delete({ where: { id } });
+        await logActivity(storeId, "Deleted product variant", variant.sku);
+      }
+      break;
+    }
+    case "customer": {
+      const orders = await prisma.order.count({ where: { customerId: id } });
+      if (orders) {
+        const customer = await prisma.customer.update({ where: { id }, data: { status: "Archived" } });
+        await logActivity(storeId, "Archived customer", customer.email);
+      } else {
+        const customer = await prisma.customer.delete({ where: { id } });
+        await logActivity(storeId, "Deleted customer", customer.email);
+      }
+      break;
+    }
+    case "payout":
+      await prisma.payout.delete({ where: { id } });
+      await logActivity(storeId, "Deleted payout", id);
+      break;
+    case "transaction":
+      await prisma.transaction.delete({ where: { id } });
+      await logActivity(storeId, "Deleted transaction", id);
+      break;
+    case "chargeback":
+      await prisma.chargeback.delete({ where: { id } });
+      await logActivity(storeId, "Deleted chargeback", id);
+      break;
+    case "supplier":
+      await prisma.supplier.delete({ where: { id } });
+      await logActivity(storeId, "Deleted supplier", id);
+      break;
+    case "purchaseOrder":
+      await prisma.purchaseOrder.delete({ where: { id } });
+      await logActivity(storeId, "Deleted purchase order", id);
+      break;
+    case "transfer":
+      await prisma.transfer.delete({ where: { id } });
+      await logActivity(storeId, "Deleted transfer", id);
+      break;
+    case "inventoryMovement":
+      await prisma.inventoryMovement.delete({ where: { id } });
+      await logActivity(storeId, "Deleted inventory movement", id);
+      break;
+    case "fulfillment":
+      await prisma.fulfillment.delete({ where: { id } });
+      await logActivity(storeId, "Deleted fulfillment", id);
+      break;
+    case "returnCase":
+      await prisma.returnCase.delete({ where: { id } });
+      await logActivity(storeId, "Deleted return case", id);
+      break;
+    case "shippingLabel":
+      await prisma.shippingLabel.delete({ where: { id } });
+      await logActivity(storeId, "Deleted shipping label", id);
+      break;
+    case "market": {
+      const market = await prisma.market.findUniqueOrThrow({ where: { id } });
+      if (market.status === "Draft") {
+        await prisma.market.delete({ where: { id } });
+        await logActivity(storeId, "Deleted market", market.name);
+      } else {
+        await prisma.market.update({ where: { id }, data: { status: "Paused" } });
+        await logActivity(storeId, "Paused market", market.name);
+      }
+      break;
+    }
+    case "reportSnapshot":
+      await prisma.reportSnapshot.delete({ where: { id } });
+      await logActivity(storeId, "Deleted report", id);
+      break;
+    case "appInstallation":
+      await prisma.appInstallation.delete({ where: { id } });
+      await logActivity(storeId, "Deleted app record", id);
+      break;
+  }
+
+  revalidateResource(resource);
+}
+
+export async function bulkUpdateResource(formData: FormData) {
+  const storeId = await getCurrentStoreId();
+  const resource = getResource(formData);
+  const ids = String(formData.get("ids") || "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+  const status = String(formData.get("status") || "");
+  if (!ids.length || !status) return;
+
+  switch (resource) {
+    case "order":
+      await prisma.order.updateMany({ where: { id: { in: ids }, storeId }, data: { fulfillmentStatus: status } });
+      break;
+    case "product":
+      await prisma.product.updateMany({ where: { id: { in: ids }, storeId }, data: { status } });
+      break;
+    case "customer":
+      await prisma.customer.updateMany({ where: { id: { in: ids }, storeId }, data: { status } });
+      break;
+    case "purchaseOrder":
+      await prisma.purchaseOrder.updateMany({ where: { id: { in: ids }, storeId }, data: { status } });
+      break;
+    case "transfer":
+      await prisma.transfer.updateMany({ where: { id: { in: ids }, storeId }, data: { status } });
+      break;
+    case "fulfillment":
+      await prisma.fulfillment.updateMany({ where: { id: { in: ids }, storeId }, data: { status } });
+      break;
+    case "returnCase":
+      await prisma.returnCase.updateMany({ where: { id: { in: ids }, storeId }, data: { status } });
+      break;
+    case "market":
+      await prisma.market.updateMany({ where: { id: { in: ids }, storeId }, data: { status } });
+      break;
+    case "appInstallation":
+      await prisma.appInstallation.updateMany({ where: { id: { in: ids }, storeId }, data: { status } });
+      break;
+    default:
+      return;
+  }
+
+  await logActivity(storeId, "Bulk status update", `${resource}: ${ids.length}`);
+  revalidateResource(resource);
+}
+
+export async function adjustVariantInventory(formData: FormData) {
+  const storeId = await getCurrentStoreId();
+  const variantId = String(formData.get("variantId") || "");
+  const quantity = Number(formData.get("quantity") || 0);
+  const location = String(formData.get("location") || "Warehouse");
+  const kind = String(formData.get("kind") || "Adjustment");
+  if (!variantId || !Number.isFinite(quantity)) return;
+
+  const variant = await prisma.productVariant.update({
+    where: { id: variantId },
+    data: { inventory: { increment: quantity } },
+  });
+
+  await prisma.inventoryMovement.create({
+    data: {
+      storeId,
+      variantId,
+      reference: safeReference("MOV", ""),
+      kind,
+      location,
+      quantity,
+      status: "Posted",
+    },
+  });
+  await logActivity(storeId, "Adjusted inventory", variant.sku);
+  revalidatePath("/admin/products");
+  revalidatePath("/admin/inventory");
+}
+
+export async function createReturnFromOrder(formData: FormData) {
+  const storeId = await getCurrentStoreId();
+  const orderId = String(formData.get("orderId") || "");
+  const reason = String(formData.get("reason") || "Admin requested return");
+  const order = await prisma.order.findUniqueOrThrow({ where: { id: orderId }, include: { customer: true } });
+  const returnCase = await prisma.returnCase.create({
+    data: {
+      storeId,
+      orderId,
+      caseNumber: safeReference("RMA", ""),
+      customer: order.customer.name,
+      reason,
+      status: "Requested",
+    },
+  });
+  await logActivity(storeId, "Created return from order", returnCase.caseNumber);
+  revalidatePath("/admin/orders");
+  revalidatePath("/admin/shipping");
+}
+
 export async function updateOrderStatus(formData: FormData) {
   const id = String(formData.get("id"));
   const fulfillmentStatus = String(formData.get("fulfillmentStatus"));
@@ -124,14 +658,22 @@ export async function updateOrderStatus(formData: FormData) {
 
 export async function saveTheme(formData: FormData) {
   const store = await getStore();
-  const sections = ["hero", "collection", "story"].map((id, index) => ({
-    id,
-    title: String(formData.get(`${id}.title`) || ""),
-    copy: String(formData.get(`${id}.copy`) || ""),
-    cta: String(formData.get(`${id}.cta`) || ""),
-    visible: formData.get(`${id}.visible`) === "on",
-    sortOrder: index + 1,
-  }));
+  const sectionIds = String(formData.get("sectionIds") || "hero,collection,story")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+  const sections = sectionIds
+    .filter((id) => formData.get(`${id}.delete`) !== "on")
+    .map((id, index) => ({
+      id,
+      title: String(formData.get(`${id}.title`) || ""),
+      copy: String(formData.get(`${id}.copy`) || ""),
+      cta: String(formData.get(`${id}.cta`) || ""),
+      visible: formData.get(`${id}.visible`) === "on",
+      sortOrder: Number(formData.get(`${id}.sortOrder`) || index + 1),
+    }))
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((section, index) => ({ ...section, sortOrder: index + 1 }));
 
   await prisma.themeConfig.upsert({
     where: { storeId_key: { storeId: store.id, key: "home" } },
@@ -139,6 +681,36 @@ export async function saveTheme(formData: FormData) {
     create: { storeId: store.id, key: "home", sections },
   });
 
+  revalidatePath("/admin/theme");
+  revalidatePath("/");
+}
+
+export async function createThemeSection(formData: FormData) {
+  const store = await getStore();
+  const theme = await getHomeTheme(store.id);
+  const existing = ((theme?.sections ?? []) as { id: string; sortOrder: number }[]).sort((a, b) => a.sortOrder - b.sortOrder);
+  const rawId = slugify(String(formData.get("id") || formData.get("title") || `section-${Date.now()}`));
+  const id = existing.some((section) => section.id === rawId) ? `${rawId}-${Date.now().toString().slice(-4)}` : rawId;
+  const sections = [
+    ...existing,
+    {
+      id,
+      title: String(formData.get("title") || "New section"),
+      copy: String(formData.get("copy") || "Add section copy."),
+      cta: String(formData.get("cta") || "Shop now"),
+      visible: true,
+      sortOrder: existing.length + 1,
+    },
+  ];
+
+  await prisma.themeConfig.upsert({
+    where: { storeId_key: { storeId: store.id, key: "home" } },
+    update: { sections },
+    create: { storeId: store.id, key: "home", sections },
+  });
+  await prisma.activityLog.create({
+    data: { storeId: store.id, actor: "Admin", action: "Created theme section", subject: id },
+  });
   revalidatePath("/admin/theme");
   revalidatePath("/");
 }

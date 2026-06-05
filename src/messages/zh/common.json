@@ -12,7 +12,16 @@
     "markPaid": "标记已打款",
     "fulfill": "标记履约",
     "install": "安装",
-    "uninstall": "卸载"
+    "uninstall": "卸载",
+    "edit": "编辑",
+    "delete": "删除",
+    "cancel": "取消",
+    "details": "详情",
+    "bulkUpdate": "批量更新",
+    "createReturn": "创建退货",
+    "adjustInventory": "调整库存",
+    "archive": "归档",
+    "saveChanges": "保存修改"
   },
   "language": {
     "label": "语言",
@@ -27,6 +36,8 @@
     "records": "{count} 条记录",
     "searchFor": "搜索：{query}",
     "allOrders": "全部订单",
-    "unassigned": "未分配"
+    "unassigned": "未分配",
+    "selected": "已选择 {count} 条",
+    "confirmDelete": "这会删除或归档该记录，确认继续？"
   }
 }

@@ -33,4 +33,7 @@
   "Packed": "已打包",
   "New": "新客户",
   "Returning": "回头客"
+  ,
+  "Cancelled": "已取消",
+  "Open": "处理中"
 }
