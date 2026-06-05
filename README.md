@@ -52,3 +52,7 @@ The current admin session is a local demo cookie. Supabase Auth helper wiring is
 - Checkout decrements variant inventory and redirects to success.
 - Success links back to `/admin/orders?query=<orderNumber>`.
 - Admin products, orders, customers, theme, and apps are backed by Prisma.
+
+## Contact
+
+For inquiries about this project, please contact me at [smartforus@foxmail.com](mailto:smartforus@foxmail.com).
