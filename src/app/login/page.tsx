@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { login } from "@/lib/actions";
+import { loginErrorKey } from "@/lib/auth-errors";
 
 export default async function LoginPage({
   searchParams,
@@ -8,8 +9,8 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const { error } = await searchParams;
-  const missingConfig = error === "supabase-env";
   const t = await getTranslations("auth");
+  const errorKey = loginErrorKey(error);
 
   return (
     <main className="grid min-h-screen place-items-center bg-[#f4f7f4] p-4">
@@ -24,7 +25,7 @@ export default async function LoginPage({
         </p>
         {error ? (
           <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-800">
-            {missingConfig ? t("missingSupabase") : error}
+            {errorKey ? t(`errors.${errorKey}`) : t("errors.generic")}
           </div>
         ) : null}
         <form action={login} className="mt-5 grid gap-3">

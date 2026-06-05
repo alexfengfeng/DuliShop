@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
+import {
+  canProcessCompletedCheckout,
+  inventoryDeltasForOrderItems,
+  stripeTransactionReference,
+} from "@/lib/checkout/webhook";
 
 export async function POST(request: Request) {
   const stripe = getStripe();
@@ -36,7 +41,7 @@ export async function POST(request: Request) {
           include: { items: true },
         });
 
-        if (!order || order.paymentStatus === "Paid") return;
+        if (!canProcessCompletedCheckout(order)) return;
 
         await tx.order.update({
           where: { id: orderId },
@@ -51,7 +56,7 @@ export async function POST(request: Request) {
           },
         });
 
-        for (const item of order.items) {
+        for (const item of inventoryDeltasForOrderItems(order.items)) {
           await tx.productVariant.update({
             where: { id: item.variantId },
             data: { inventory: { decrement: item.quantity } },
@@ -66,7 +71,7 @@ export async function POST(request: Request) {
         await tx.transaction.create({
           data: {
             storeId: order.storeId,
-            reference: `STRIPE-${session.id}`,
+            reference: stripeTransactionReference(session.id),
             kind: "Stripe checkout",
             amount: order.total,
             fee: 0,
