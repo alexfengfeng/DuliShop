@@ -1,0 +1,410 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Store {
+  id        String   @id @default(cuid())
+  name      String
+  domain    String   @unique
+  currency  String   @default("USD")
+  language  String   @default("en")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users             User[]
+  products          Product[]
+  collections       Collection[]
+  customers         Customer[]
+  carts             Cart[]
+  orders            Order[]
+  themeConfigs      ThemeConfig[]
+  appInstallations  AppInstallation[]
+  activityLogs      ActivityLog[]
+  payouts           Payout[]
+  transactions      Transaction[]
+  chargebacks       Chargeback[]
+  inventoryMovements InventoryMovement[]
+  purchaseOrders    PurchaseOrder[]
+  transfers         Transfer[]
+  suppliers         Supplier[]
+  fulfillments      Fulfillment[]
+  returnCases       ReturnCase[]
+  shippingLabels    ShippingLabel[]
+  markets           Market[]
+  reportSnapshots   ReportSnapshot[]
+}
+
+model User {
+  id             String   @id @default(cuid())
+  storeId        String
+  supabaseUserId String?  @unique
+  email          String   @unique
+  name           String
+  role           String   @default("admin")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+model Collection {
+  id          String   @id @default(cuid())
+  storeId     String
+  title       String
+  handle      String
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  store    Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@unique([storeId, handle])
+}
+
+model Product {
+  id           String   @id @default(cuid())
+  storeId      String
+  collectionId String?
+  title        String
+  handle       String
+  description  String
+  status       String   @default("Active")
+  category     String   @default("Home")
+  mediaColor   String   @default("#e8f2dd")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  store      Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  collection Collection?      @relation(fields: [collectionId], references: [id], onDelete: SetNull)
+  variants   ProductVariant[]
+  orderItems OrderItem[]
+  cartItems  CartItem[]
+
+  @@unique([storeId, handle])
+}
+
+model ProductVariant {
+  id        String   @id @default(cuid())
+  productId String
+  sku       String   @unique
+  color     String
+  size      String
+  price     Decimal  @db.Decimal(10, 2)
+  inventory Int      @default(0)
+  reservedInventory Int @default(0)
+  incomingInventory Int @default(0)
+  status    String   @default("Active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+  cartItems  CartItem[]
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  storeId   String
+  name      String
+  email     String
+  tags      String[] @default([])
+  ltv       Decimal  @default(0) @db.Decimal(10, 2)
+  status    String   @default("New")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store  Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@unique([storeId, email])
+}
+
+model Cart {
+  id        String   @id @default(cuid())
+  storeId   String
+  token     String   @unique
+  status    String   @default("Open")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  items CartItem[]
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  productId String
+  variantId String
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cart    Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([cartId, variantId])
+}
+
+model Order {
+  id                String   @id @default(cuid())
+  storeId           String
+  customerId        String
+  orderNumber       String   @unique
+  paymentStatus     String   @default("Paid")
+  fulfillmentStatus String   @default("Unfulfilled")
+  shippingStatus    String   @default("Not shipped")
+  riskLevel          String   @default("Low")
+  stripeSessionId   String?  @unique
+  stripePaymentIntentId String?
+  channel           String   @default("Online Store")
+  subtotal          Decimal  @db.Decimal(10, 2)
+  total             Decimal  @db.Decimal(10, 2)
+  paidAt            DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  store    Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customer Customer    @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  items    OrderItem[]
+  fulfillments Fulfillment[]
+  returnCases ReturnCase[]
+  shippingLabels ShippingLabel[]
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  productId String
+  variantId String
+  title     String
+  sku       String
+  quantity  Int
+  price     Decimal @db.Decimal(10, 2)
+
+  order   Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+}
+
+model ThemeConfig {
+  id        String   @id @default(cuid())
+  storeId   String
+  key       String
+  sections  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, key])
+}
+
+model AppInstallation {
+  id        String   @id @default(cuid())
+  storeId   String
+  appKey    String
+  name      String
+  category  String
+  billing   String
+  scopes    String[] @default([])
+  status    String   @default("Available")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, appKey])
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  storeId   String
+  actor     String
+  action    String
+  subject   String
+  createdAt DateTime @default(now())
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+model Payout {
+  id        String   @id @default(cuid())
+  storeId   String
+  reference String   @unique
+  amount    Decimal  @db.Decimal(10, 2)
+  method    String
+  status    String   @default("Scheduled")
+  scheduledAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+model Transaction {
+  id        String   @id @default(cuid())
+  storeId   String
+  reference String   @unique
+  kind      String
+  amount    Decimal  @db.Decimal(10, 2)
+  fee       Decimal  @default(0) @db.Decimal(10, 2)
+  status    String   @default("Captured")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+model Chargeback {
+  id        String   @id @default(cuid())
+  storeId   String
+  caseNumber String @unique
+  customer  String
+  amount    Decimal @db.Decimal(10, 2)
+  reason    String
+  status    String  @default("Open")
+  dueAt     DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+model Supplier {
+  id        String   @id @default(cuid())
+  storeId   String
+  name      String
+  contact   String
+  status    String   @default("Active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  purchaseOrders PurchaseOrder[]
+}
+
+model PurchaseOrder {
+  id        String   @id @default(cuid())
+  storeId   String
+  supplierId String?
+  reference String   @unique
+  expectedAt DateTime
+  amount    Decimal  @db.Decimal(10, 2)
+  status    String   @default("Ordered")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+}
+
+model Transfer {
+  id        String   @id @default(cuid())
+  storeId   String
+  reference String   @unique
+  fromLocation String
+  toLocation   String
+  units     Int
+  status    String   @default("In transit")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+model InventoryMovement {
+  id        String   @id @default(cuid())
+  storeId   String
+  variantId String?
+  reference String   @unique
+  kind      String
+  location  String
+  quantity  Int
+  status    String   @default("Posted")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+model Fulfillment {
+  id        String   @id @default(cuid())
+  storeId   String
+  orderId   String?
+  reference String   @unique
+  carrier   String
+  status    String   @default("Queued")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  order Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+}
+
+model ReturnCase {
+  id        String   @id @default(cuid())
+  storeId   String
+  orderId   String?
+  caseNumber String @unique
+  customer  String
+  reason    String
+  status    String @default("Requested")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  order Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+}
+
+model ShippingLabel {
+  id        String   @id @default(cuid())
+  storeId   String
+  orderId   String?
+  labelNumber String @unique
+  carrier   String
+  cost      Decimal @db.Decimal(10, 2)
+  status    String @default("Purchased")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  order Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+}
+
+model Market {
+  id        String   @id @default(cuid())
+  storeId   String
+  name      String
+  region    String
+  currency  String
+  language  String
+  status    String   @default("Active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, name])
+}
+
+model ReportSnapshot {
+  id        String   @id @default(cuid())
+  storeId   String
+  name      String
+  kind      String
+  status    String   @default("Ready")
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, name])
+}

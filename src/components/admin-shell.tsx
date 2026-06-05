@@ -1,0 +1,68 @@
+import Link from "next/link";
+import { BadgeDollarSign, BarChart3, Globe2, LayoutDashboard, Package, ReceiptText, Store, Truck, Users, WandSparkles, Plug, Warehouse } from "lucide-react";
+import { logout } from "@/lib/actions";
+
+const nav = [
+  { href: "/admin/dashboard", label: "Home", icon: LayoutDashboard },
+  { href: "/admin/orders", label: "Orders", icon: ReceiptText },
+  { href: "/admin/products", label: "Products", icon: Package },
+  { href: "/admin/customers", label: "Customers", icon: Users },
+  { href: "/admin/finance", label: "Finance", icon: BadgeDollarSign },
+  { href: "/admin/inventory", label: "Inventory", icon: Warehouse },
+  { href: "/admin/shipping", label: "Shipping", icon: Truck },
+  { href: "/admin/markets", label: "Markets", icon: Globe2 },
+  { href: "/admin/reports", label: "Reports", icon: BarChart3 },
+  { href: "/admin/theme", label: "Theme", icon: WandSparkles },
+  { href: "/admin/apps", label: "Apps", icon: Plug },
+];
+
+export function AdminShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-[#f4f7f4] text-[#173326] lg:grid lg:grid-cols-[260px_minmax(0,1fr)]">
+      <aside className="border-r border-[#274634] bg-[#102f22] p-4 text-white">
+        <Link href="/admin/dashboard" className="block px-3 py-2 text-xl font-black">
+          Solace Supply
+        </Link>
+        <nav className="mt-5 grid gap-1">
+          {nav.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-bold text-white/82 hover:bg-white/10"
+              >
+                <Icon size={17} />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+        <Link
+          href="/"
+          className="mt-5 flex items-center gap-3 rounded-lg border border-white/15 px-3 py-2 text-sm font-bold text-white/82"
+        >
+          <Store size={17} />
+          View storefront
+        </Link>
+      </aside>
+      <div className="min-w-0">
+        <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-3 border-b border-[#dfe7df] bg-white/90 px-4 backdrop-blur">
+          <form action="/admin/orders" className="w-full max-w-xl">
+            <input
+              name="query"
+              placeholder="Search orders, products, customers"
+              className="h-10 w-full rounded-lg border border-[#d8e0d8] bg-[#f8faf8] px-3 text-sm outline-none focus:border-[#173326]"
+            />
+          </form>
+          <form action={logout}>
+            <button className="rounded-lg border border-[#d8e0d8] px-3 py-2 text-sm font-bold" type="submit">
+              Log out
+            </button>
+          </form>
+        </header>
+        <main className="p-4 lg:p-6">{children}</main>
+      </div>
+    </div>
+  );
+}
