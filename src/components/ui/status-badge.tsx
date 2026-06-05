@@ -11,7 +11,7 @@ const tones: Record<string, string> = {
   "At risk": "bg-rose-50 text-rose-800 ring-rose-200",
 };
 
-export function StatusBadge({ value }: { value: string }) {
+export function StatusBadge({ value, label }: { value: string; label?: string }) {
   return (
     <span
       className={cn(
@@ -19,7 +19,7 @@ export function StatusBadge({ value }: { value: string }) {
         tones[value] ?? "bg-slate-50 text-slate-700 ring-slate-200",
       )}
     >
-      {value}
+      {label ?? value}
     </span>
   );
 }

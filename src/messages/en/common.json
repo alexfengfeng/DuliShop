@@ -1,0 +1,32 @@
+{
+  "actions": {
+    "save": "Save",
+    "create": "Create",
+    "update": "Update",
+    "logout": "Log out",
+    "viewStorefront": "View storefront",
+    "search": "Search",
+    "activate": "Activate",
+    "pause": "Pause",
+    "reopen": "Reopen",
+    "markPaid": "Mark paid",
+    "fulfill": "Fulfill",
+    "install": "Install",
+    "uninstall": "Uninstall"
+  },
+  "language": {
+    "label": "Language",
+    "english": "EN",
+    "chinese": "中文"
+  },
+  "empty": {
+    "noRecords": "No records yet.",
+    "noMatchingOrders": "No matching orders yet."
+  },
+  "misc": {
+    "records": "{count} records",
+    "searchFor": "Search: {query}",
+    "allOrders": "All orders",
+    "unassigned": "Unassigned"
+  }
+}

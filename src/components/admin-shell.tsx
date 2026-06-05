@@ -1,22 +1,27 @@
 import Link from "next/link";
 import { BadgeDollarSign, BarChart3, Globe2, LayoutDashboard, Package, ReceiptText, Store, Truck, Users, WandSparkles, Plug, Warehouse } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { logout } from "@/lib/actions";
+import { LanguageSwitcher } from "@/components/language-switcher";
 
 const nav = [
-  { href: "/admin/dashboard", label: "Home", icon: LayoutDashboard },
-  { href: "/admin/orders", label: "Orders", icon: ReceiptText },
-  { href: "/admin/products", label: "Products", icon: Package },
-  { href: "/admin/customers", label: "Customers", icon: Users },
-  { href: "/admin/finance", label: "Finance", icon: BadgeDollarSign },
-  { href: "/admin/inventory", label: "Inventory", icon: Warehouse },
-  { href: "/admin/shipping", label: "Shipping", icon: Truck },
-  { href: "/admin/markets", label: "Markets", icon: Globe2 },
-  { href: "/admin/reports", label: "Reports", icon: BarChart3 },
-  { href: "/admin/theme", label: "Theme", icon: WandSparkles },
-  { href: "/admin/apps", label: "Apps", icon: Plug },
+  { href: "/admin/dashboard", labelKey: "home", icon: LayoutDashboard },
+  { href: "/admin/orders", labelKey: "orders", icon: ReceiptText },
+  { href: "/admin/products", labelKey: "products", icon: Package },
+  { href: "/admin/customers", labelKey: "customers", icon: Users },
+  { href: "/admin/finance", labelKey: "finance", icon: BadgeDollarSign },
+  { href: "/admin/inventory", labelKey: "inventory", icon: Warehouse },
+  { href: "/admin/shipping", labelKey: "shipping", icon: Truck },
+  { href: "/admin/markets", labelKey: "markets", icon: Globe2 },
+  { href: "/admin/reports", labelKey: "reports", icon: BarChart3 },
+  { href: "/admin/theme", labelKey: "theme", icon: WandSparkles },
+  { href: "/admin/apps", labelKey: "apps", icon: Plug },
 ];
 
-export function AdminShell({ children }: { children: React.ReactNode }) {
+export async function AdminShell({ children }: { children: React.ReactNode }) {
+  const t = await getTranslations("admin");
+  const common = await getTranslations("common");
+
   return (
     <div className="min-h-screen bg-[#f4f7f4] text-[#173326] lg:grid lg:grid-cols-[260px_minmax(0,1fr)]">
       <aside className="border-r border-[#274634] bg-[#102f22] p-4 text-white">
@@ -33,7 +38,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-bold text-white/82 hover:bg-white/10"
               >
                 <Icon size={17} />
-                {item.label}
+                {t(`nav.${item.labelKey}`)}
               </Link>
             );
           })}
@@ -43,7 +48,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           className="mt-5 flex items-center gap-3 rounded-lg border border-white/15 px-3 py-2 text-sm font-bold text-white/82"
         >
           <Store size={17} />
-          View storefront
+          {t("shell.storefront")}
         </Link>
       </aside>
       <div className="min-w-0">
@@ -51,13 +56,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <form action="/admin/orders" className="w-full max-w-xl">
             <input
               name="query"
-              placeholder="Search orders, products, customers"
+              placeholder={t("shell.searchPlaceholder")}
               className="h-10 w-full rounded-lg border border-[#d8e0d8] bg-[#f8faf8] px-3 text-sm outline-none focus:border-[#173326]"
             />
           </form>
+          <LanguageSwitcher />
           <form action={logout}>
             <button className="rounded-lg border border-[#d8e0d8] px-3 py-2 text-sm font-bold" type="submit">
-              Log out
+              {common("actions.logout")}
             </button>
           </form>
         </header>

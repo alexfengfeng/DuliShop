@@ -1,0 +1,32 @@
+{
+  "actions": {
+    "save": "保存",
+    "create": "创建",
+    "update": "更新",
+    "logout": "退出登录",
+    "viewStorefront": "查看前台",
+    "search": "搜索",
+    "activate": "启用",
+    "pause": "暂停",
+    "reopen": "重新打开",
+    "markPaid": "标记已打款",
+    "fulfill": "标记履约",
+    "install": "安装",
+    "uninstall": "卸载"
+  },
+  "language": {
+    "label": "语言",
+    "english": "EN",
+    "chinese": "中文"
+  },
+  "empty": {
+    "noRecords": "暂无记录。",
+    "noMatchingOrders": "没有匹配的订单。"
+  },
+  "misc": {
+    "records": "{count} 条记录",
+    "searchFor": "搜索：{query}",
+    "allOrders": "全部订单",
+    "unassigned": "未分配"
+  }
+}

@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { slugify } from "@/lib/format";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getStripe } from "@/lib/stripe";
+import { isAppLocale, localeCookieName } from "@/i18n/routing";
 
 const productSchema = z.object({
   title: z.string().min(2),
@@ -19,6 +20,18 @@ const productSchema = z.object({
   price: z.coerce.number().positive(),
   inventory: z.coerce.number().int().min(0),
 });
+
+export async function setLocale(formData: FormData) {
+  const locale = String(formData.get("locale") || "");
+  if (!isAppLocale(locale)) return;
+
+  const cookieStore = await cookies();
+  cookieStore.set(localeCookieName, locale, {
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+  });
+}
 
 export async function login(formData: FormData) {
   const supabase = await createSupabaseServerClient();
