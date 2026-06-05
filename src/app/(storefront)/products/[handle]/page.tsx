@@ -24,7 +24,11 @@ export default async function ProductPage({
   return (
     <StorefrontShell>
       <main className="grid gap-8 px-5 py-10 lg:grid-cols-[.95fr_.75fr] lg:px-[7vw]">
-        <div className="min-h-[420px] rounded-lg shadow-2xl" style={{ background: `linear-gradient(135deg, ${product.mediaColor}, #f8e1cf 48%, #c8d9ed)` }} />
+        {product.featuredImageUrl ? (
+          <img src={product.featuredImageUrl} alt={product.featuredImageAlt || product.title} className="min-h-[420px] rounded-lg object-cover shadow-2xl" />
+        ) : (
+          <div className="min-h-[420px] rounded-lg shadow-2xl" style={{ background: `linear-gradient(135deg, ${product.mediaColor}, #f8e1cf 48%, #c8d9ed)` }} />
+        )}
         <section>
           <p className="text-xs font-black uppercase tracking-wide text-[#697068]">Featured product</p>
           <h1 className="mt-2 text-4xl font-black text-[#173326]">{product.title}</h1>

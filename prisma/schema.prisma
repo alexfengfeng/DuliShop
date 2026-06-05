@@ -36,6 +36,7 @@ model Store {
   shippingLabels    ShippingLabel[]
   markets           Market[]
   reportSnapshots   ReportSnapshot[]
+  imageAssets       ImageAsset[]
 }
 
 model User {
@@ -76,6 +77,9 @@ model Product {
   status       String   @default("Active")
   category     String   @default("Home")
   mediaColor   String   @default("#e8f2dd")
+  featuredImageUrl String?
+  featuredImageAlt String?
+  imagePrompt  String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -84,6 +88,7 @@ model Product {
   variants   ProductVariant[]
   orderItems OrderItem[]
   cartItems  CartItem[]
+  imageAssets ImageAsset[]
 
   @@unique([storeId, handle])
 }
@@ -232,6 +237,29 @@ model ActivityLog {
   createdAt DateTime @default(now())
 
   store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+model ImageAsset {
+  id        String   @id @default(cuid())
+  storeId   String
+  productId String?
+  themeKey  String?
+  sectionId String?
+  kind      String
+  prompt    String
+  alt       String?
+  url       String
+  status    String   @default("Ready")
+  provider  String   @default("openai")
+  model     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store   Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([storeId, kind])
+  @@index([productId])
 }
 
 model Payout {

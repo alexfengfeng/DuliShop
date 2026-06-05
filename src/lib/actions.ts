@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { CART_COOKIE, getCart, getHomeTheme, getStore } from "@/lib/data";
 import { prisma } from "@/lib/prisma";
@@ -14,6 +15,14 @@ import { getStripe } from "@/lib/stripe";
 import { isAppLocale, localeCookieName } from "@/i18n/routing";
 import { getCurrentStoreId, logActivity, normalizeOptionalRelation, revalidateResource } from "@/lib/admin/crud";
 import { resourceSchemas, safeReference, type ResourceName } from "@/lib/admin/schemas";
+import {
+  buildProductImagePrompt,
+  buildThemeImagePrompt,
+  generateOpenAiImage,
+  imageAltFromPrompt,
+  imageGenerationConfig,
+  imageStoragePath,
+} from "@/lib/images/generation";
 
 const productSchema = z.object({
   title: z.string().min(2),
@@ -126,6 +135,58 @@ function getResource(formData: FormData): ResourceName {
   return resource as ResourceName;
 }
 
+type ThemeSectionData = {
+  id: string;
+  title: string;
+  copy: string;
+  cta: string;
+  visible: boolean;
+  sortOrder: number;
+  type?: string;
+  layout?: string;
+  imagePosition?: string;
+  imagePrompt?: string;
+  imageUrl?: string;
+  imageAlt?: string;
+};
+
+async function uploadGeneratedAsset({
+  storeId,
+  kind,
+  targetId,
+  prompt,
+}: {
+  storeId: string;
+  kind: "product" | "theme";
+  targetId: string;
+  prompt: string;
+}) {
+  const config = imageGenerationConfig();
+  if (!config.configured || !config.supabaseUrl || !config.supabaseServiceRoleKey) {
+    return { configured: false as const };
+  }
+
+  const generated = await generateOpenAiImage({ prompt, kind, config });
+  const supabase = createClient(config.supabaseUrl, config.supabaseServiceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const path = imageStoragePath({ storeId, kind, targetId });
+  const upload = await supabase.storage.from("generated-assets").upload(path, generated.bytes, {
+    contentType: generated.contentType,
+    upsert: true,
+  });
+  if (upload.error) {
+    throw new Error(`Supabase Storage upload failed: ${upload.error.message}`);
+  }
+  const { data } = supabase.storage.from("generated-assets").getPublicUrl(path);
+  return {
+    configured: true as const,
+    url: data.publicUrl,
+    model: generated.model,
+    provider: "openai",
+  };
+}
+
 export async function createResource(formData: FormData) {
   const storeId = await getCurrentStoreId();
   const resource = getResource(formData);
@@ -144,6 +205,9 @@ export async function createResource(formData: FormData) {
           category: data.category,
           status: data.status,
           mediaColor: data.mediaColor,
+          featuredImageUrl: data.featuredImageUrl,
+          featuredImageAlt: data.featuredImageAlt,
+          imagePrompt: data.imagePrompt,
           variants: {
             create: {
               sku: `${handle.slice(0, 3).toUpperCase()}-${Date.now().toString().slice(-4)}`,
@@ -671,6 +735,12 @@ export async function saveTheme(formData: FormData) {
       cta: String(formData.get(`${id}.cta`) || ""),
       visible: formData.get(`${id}.visible`) === "on",
       sortOrder: Number(formData.get(`${id}.sortOrder`) || index + 1),
+      type: String(formData.get(`${id}.type`) || "Section"),
+      layout: String(formData.get(`${id}.layout`) || "Editorial split"),
+      imagePosition: String(formData.get(`${id}.imagePosition`) || "Right"),
+      imagePrompt: String(formData.get(`${id}.imagePrompt`) || ""),
+      imageUrl: String(formData.get(`${id}.imageUrl`) || ""),
+      imageAlt: String(formData.get(`${id}.imageAlt`) || ""),
     }))
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map((section, index) => ({ ...section, sortOrder: index + 1 }));
@@ -700,6 +770,12 @@ export async function createThemeSection(formData: FormData) {
       cta: String(formData.get("cta") || "Shop now"),
       visible: true,
       sortOrder: existing.length + 1,
+      type: String(formData.get("type") || "Banner"),
+      layout: String(formData.get("layout") || "Editorial split"),
+      imagePosition: String(formData.get("imagePosition") || "Right"),
+      imagePrompt: String(formData.get("imagePrompt") || ""),
+      imageUrl: "",
+      imageAlt: "",
     },
   ];
 
@@ -711,6 +787,126 @@ export async function createThemeSection(formData: FormData) {
   await prisma.activityLog.create({
     data: { storeId: store.id, actor: "Admin", action: "Created theme section", subject: id },
   });
+  revalidatePath("/admin/theme");
+  revalidatePath("/");
+}
+
+export async function generateProductImage(formData: FormData) {
+  const storeId = await getCurrentStoreId();
+  const productId = String(formData.get("productId") || "");
+  const product = await prisma.product.findFirstOrThrow({ where: { id: productId, storeId } });
+  const prompt = String(formData.get("imagePrompt") || product.imagePrompt || "").trim() || buildProductImagePrompt(product);
+  const generated = await uploadGeneratedAsset({ storeId, kind: "product", targetId: product.id, prompt });
+
+  if (!generated.configured) {
+    redirect("/admin/products?image=missing-config");
+  }
+
+  const alt = imageAltFromPrompt(prompt, product.title);
+  await prisma.imageAsset.create({
+    data: {
+      storeId,
+      productId: product.id,
+      kind: "product",
+      prompt,
+      alt,
+      url: generated.url,
+      provider: generated.provider,
+      model: generated.model,
+    },
+  });
+  await prisma.product.update({
+    where: { id: product.id },
+    data: { featuredImageUrl: generated.url, featuredImageAlt: alt, imagePrompt: prompt },
+  });
+  await logActivity(storeId, "Generated product image", product.title);
+  revalidatePath("/admin/products");
+  revalidatePath("/");
+  revalidatePath(`/products/${product.handle}`);
+  revalidatePath("/collections/all-products");
+}
+
+export async function clearProductImage(formData: FormData) {
+  const storeId = await getCurrentStoreId();
+  const productId = String(formData.get("productId") || "");
+  const product = await prisma.product.findFirstOrThrow({ where: { id: productId, storeId } });
+  await prisma.product.update({
+    where: { id: product.id },
+    data: { featuredImageUrl: null, featuredImageAlt: null },
+  });
+  await logActivity(storeId, "Cleared product image", product.title);
+  revalidatePath("/admin/products");
+  revalidatePath("/");
+  revalidatePath(`/products/${product.handle}`);
+  revalidatePath("/collections/all-products");
+}
+
+export async function generateThemeSectionImage(formData: FormData) {
+  const storeId = await getCurrentStoreId();
+  const sectionId = String(formData.get("sectionId") || "");
+  const theme = await getHomeTheme(storeId);
+  const sections = ((theme?.sections ?? []) as ThemeSectionData[]).sort((a, b) => a.sortOrder - b.sortOrder);
+  const section = sections.find((item) => item.id === sectionId);
+  if (!section) throw new Error("Theme section not found.");
+
+  const prompt =
+    String(formData.get(`${sectionId}.imagePrompt`) || section.imagePrompt || "").trim() ||
+    buildThemeImagePrompt(section);
+  const generated = await uploadGeneratedAsset({ storeId, kind: "theme", targetId: section.id, prompt });
+
+  if (!generated.configured) {
+    redirect("/admin/theme?image=missing-config");
+  }
+
+  const alt = imageAltFromPrompt(prompt, section.title);
+  const updatedSections = sections.map((item) =>
+    item.id === section.id
+      ? {
+          ...item,
+          imagePrompt: prompt,
+          imageUrl: generated.url,
+          imageAlt: alt,
+        }
+      : item,
+  );
+
+  await prisma.themeConfig.upsert({
+    where: { storeId_key: { storeId, key: "home" } },
+    update: { sections: updatedSections },
+    create: { storeId, key: "home", sections: updatedSections },
+  });
+  await prisma.imageAsset.create({
+    data: {
+      storeId,
+      themeKey: "home",
+      sectionId: section.id,
+      kind: "theme",
+      prompt,
+      alt,
+      url: generated.url,
+      provider: generated.provider,
+      model: generated.model,
+    },
+  });
+  await logActivity(storeId, "Generated theme image", section.id);
+  revalidatePath("/admin/theme");
+  revalidatePath("/");
+}
+
+export async function clearThemeSectionImage(formData: FormData) {
+  const storeId = await getCurrentStoreId();
+  const sectionId = String(formData.get("sectionId") || "");
+  const theme = await getHomeTheme(storeId);
+  const sections = ((theme?.sections ?? []) as ThemeSectionData[]).sort((a, b) => a.sortOrder - b.sortOrder);
+  const updatedSections = sections.map((section) =>
+    section.id === sectionId ? { ...section, imageUrl: "", imageAlt: "" } : section,
+  );
+  await prisma.themeConfig.upsert({
+    where: { storeId_key: { storeId, key: "home" } },
+    update: { sections: updatedSections },
+    create: { storeId, key: "home", sections: updatedSections },
+  });
+  await logActivity(storeId, "Cleared theme image", sectionId);
   revalidatePath("/admin/theme");
   revalidatePath("/");
 }

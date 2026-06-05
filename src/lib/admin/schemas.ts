@@ -37,6 +37,10 @@ const positiveMoney = z.preprocess(parseCurrencyAmount, z.number().positive());
 const csvList = z.preprocess(parseCsvList, z.array(z.string()));
 const reportPoints = z.preprocess(parseReportDataPoints, z.array(z.object({ label: z.string(), value: z.number() })));
 const optionalDate = z.preprocess((value) => new Date(String(value || new Date().toISOString())), z.date());
+const optionalText = z.preprocess((value) => {
+  const text = String(value ?? "").trim();
+  return text || undefined;
+}, z.string().optional());
 
 export const resourceSchemas = {
   order: {
@@ -56,6 +60,9 @@ export const resourceSchemas = {
       price: positiveMoney,
       inventory: z.coerce.number().int().min(0),
       mediaColor: z.string().default("#e8f2dd"),
+      featuredImageUrl: optionalText,
+      featuredImageAlt: optionalText,
+      imagePrompt: optionalText,
     }),
     update: z.object({
       title: z.string().min(2),
@@ -63,6 +70,9 @@ export const resourceSchemas = {
       category: z.string().min(2),
       status: z.string().min(2),
       mediaColor: z.string().default("#e8f2dd"),
+      featuredImageUrl: optionalText,
+      featuredImageAlt: optionalText,
+      imagePrompt: optionalText,
     }),
   },
   productVariant: {

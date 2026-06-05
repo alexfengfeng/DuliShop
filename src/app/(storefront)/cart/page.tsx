@@ -17,7 +17,11 @@ export default async function CartPage() {
           <div className="mt-4 overflow-hidden rounded-lg border border-[#e6dfd2] bg-white">
             {cart?.items.length ? cart.items.map((item) => (
               <div key={item.id} className="grid gap-3 border-b border-[#eee7da] p-4 md:grid-cols-[72px_minmax(0,1fr)_220px] md:items-center">
-                <div className="h-16 w-16 rounded-lg" style={{ background: `linear-gradient(135deg, ${item.product.mediaColor}, #f8e1cf)` }} />
+                {item.product.featuredImageUrl ? (
+                  <img src={item.product.featuredImageUrl} alt={item.product.featuredImageAlt || item.product.title} className="h-16 w-16 rounded-lg object-cover" />
+                ) : (
+                  <div className="h-16 w-16 rounded-lg" style={{ background: `linear-gradient(135deg, ${item.product.mediaColor}, #f8e1cf)` }} />
+                )}
                 <div>
                   <h2 className="font-black">{item.product.title}</h2>
                   <p className="text-sm text-[#697068]">{item.variant.color} / {item.variant.size} · {money(item.variant.price)}</p>

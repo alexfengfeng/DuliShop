@@ -46,8 +46,16 @@
       "category": "分类",
       "description": "描述",
       "price": "价格",
-      "inventory": "库存"
+      "inventory": "库存",
+      "imageUrl": "主图 URL",
+      "imageAlt": "图片 alt 文案",
+      "imagePrompt": "AI 图片提示词"
     },
+    "aiImage": "AI 商品图",
+    "aiImageHelp": "生成、替换或清除前台商品图，不影响变体和结账链路。",
+    "generateImage": "生成图片",
+    "clearImage": "清除图片",
+    "imageConfigMissing": "图片生成需要配置 OPENAI_API_KEY、NEXT_PUBLIC_SUPABASE_URL、SUPABASE_SERVICE_ROLE_KEY，并创建名为 generated-assets 的公开 Supabase Storage bucket。",
     "archiveDelete": "归档/删除"
   },
   "customers": {
@@ -128,7 +136,13 @@
     "title": "主题编辑器",
     "save": "保存主题",
     "visible": "显示",
-    "livePreview": "实时预览"
+    "livePreview": "实时预览",
+    "imagePrompt": "AI 图片提示词",
+    "imageUrl": "图片 URL",
+    "imageAlt": "图片 alt 文案",
+    "generateImage": "生成模块图片",
+    "clearImage": "清除图片",
+    "imageConfigMissing": "图片生成需要配置 OPENAI_API_KEY、NEXT_PUBLIC_SUPABASE_URL、SUPABASE_SERVICE_ROLE_KEY，并创建名为 generated-assets 的公开 Supabase Storage bucket。"
   },
   "apps": {
     "eyebrow": "安装状态已持久化到 Postgres",

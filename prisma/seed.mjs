@@ -14,9 +14,48 @@ const prisma = new PrismaClient({
 const storeDomain = "solace-supply.test";
 
 const themeSections = [
-  { id: "hero", title: "Calm goods for everyday rituals", copy: "Thoughtful storage, soft textures, and desk objects for a slower home.", cta: "Shop the collection", visible: true, sortOrder: 1 },
-  { id: "collection", title: "Designed for daily order", copy: "Utility totes, stackable pantry objects, and desk pieces in quiet materials.", cta: "Browse essentials", visible: true, sortOrder: 2 },
-  { id: "story", title: "A slower supply cabinet", copy: "Solace Supply creates practical pieces that make small routines feel considered.", cta: "Read our story", visible: true, sortOrder: 3 },
+  {
+    id: "hero",
+    title: "Calm goods for everyday rituals",
+    copy: "Thoughtful storage, soft textures, and desk objects for a slower home.",
+    cta: "Shop the collection",
+    visible: true,
+    sortOrder: 1,
+    type: "Hero",
+    layout: "Editorial split",
+    imagePosition: "Right",
+    imagePrompt: "Warm daylight editorial hero image for calm home goods, soft textiles, ceramic trays, and organized daily rituals.",
+    imageUrl: "",
+    imageAlt: "",
+  },
+  {
+    id: "collection",
+    title: "Designed for daily order",
+    copy: "Utility totes, stackable pantry objects, and desk pieces in quiet materials.",
+    cta: "Browse essentials",
+    visible: true,
+    sortOrder: 2,
+    type: "Collection feature",
+    layout: "Image band",
+    imagePosition: "Left",
+    imagePrompt: "Organized product collection scene with totes, pantry containers, and desk objects in neutral natural materials.",
+    imageUrl: "",
+    imageAlt: "",
+  },
+  {
+    id: "story",
+    title: "A slower supply cabinet",
+    copy: "Solace Supply creates practical pieces that make small routines feel considered.",
+    cta: "Read our story",
+    visible: true,
+    sortOrder: 3,
+    type: "Story",
+    layout: "Text first",
+    imagePosition: "Right",
+    imagePrompt: "Quiet brand story image for modern practical home goods, slow living, warm shelving, and soft shadows.",
+    imageUrl: "",
+    imageAlt: "",
+  },
 ];
 
 const appSeeds = [
@@ -60,15 +99,20 @@ async function main() {
   });
 
   const products = [
-    { title: "Linen Utility Tote", handle: "linen-utility-tote", description: "A soft-sided carryall with reinforced seams, calm colors, and room for market days or work tools.", category: "Bags", color: "#e8f2dd", price: 68 },
-    { title: "Stackable Pantry Set", handle: "stackable-pantry-set", description: "Modular storage vessels that keep dry goods visible and counters quiet.", category: "Home", color: "#f7d7c3", price: 54 },
-    { title: "Ceramic Desk Tray", handle: "ceramic-desk-tray", description: "A low ceramic tray for keys, notes, chargers, and the soft chaos of a workday.", category: "Desk", color: "#c8d9ed", price: 42 },
+    { title: "Linen Utility Tote", handle: "linen-utility-tote", description: "A soft-sided carryall with reinforced seams, calm colors, and room for market days or work tools.", category: "Bags", color: "#e8f2dd", price: 68, imagePrompt: "Premium product photo of a linen utility tote in natural sage fabric, warm daylight, clean ecommerce background." },
+    { title: "Stackable Pantry Set", handle: "stackable-pantry-set", description: "Modular storage vessels that keep dry goods visible and counters quiet.", category: "Home", color: "#f7d7c3", price: 54, imagePrompt: "Premium product photo of stackable pantry storage vessels with dry goods, calm kitchen counter, natural daylight." },
+    { title: "Ceramic Desk Tray", handle: "ceramic-desk-tray", description: "A low ceramic tray for keys, notes, chargers, and the soft chaos of a workday.", category: "Desk", color: "#c8d9ed", price: 42, imagePrompt: "Premium product photo of a low ceramic desk tray holding keys notes and charger, minimal desk styling, soft daylight." },
   ];
 
   for (const productSeed of products) {
     const product = await prisma.product.upsert({
       where: { storeId_handle: { storeId: store.id, handle: productSeed.handle } },
-      update: {},
+      update: {
+        description: productSeed.description,
+        category: productSeed.category,
+        mediaColor: productSeed.color,
+        imagePrompt: productSeed.imagePrompt,
+      },
       create: {
         storeId: store.id,
         collectionId: collection.id,
@@ -78,6 +122,7 @@ async function main() {
         status: "Active",
         category: productSeed.category,
         mediaColor: productSeed.color,
+        imagePrompt: productSeed.imagePrompt,
       },
     });
 

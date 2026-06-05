@@ -46,8 +46,16 @@
       "category": "Category",
       "description": "Description",
       "price": "Price",
-      "inventory": "Inventory"
+      "inventory": "Inventory",
+      "imageUrl": "Featured image URL",
+      "imageAlt": "Image alt text",
+      "imagePrompt": "AI image prompt"
     },
+    "aiImage": "AI product image",
+    "aiImageHelp": "Generate, replace, or clear the storefront image without affecting variants or checkout.",
+    "generateImage": "Generate image",
+    "clearImage": "Clear image",
+    "imageConfigMissing": "Image generation needs OPENAI_API_KEY, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and a public Supabase Storage bucket named generated-assets.",
     "archiveDelete": "Archive/Delete"
   },
   "customers": {
@@ -128,7 +136,13 @@
     "title": "Theme editor",
     "save": "Save theme",
     "visible": "Visible",
-    "livePreview": "Live preview"
+    "livePreview": "Live preview",
+    "imagePrompt": "AI image prompt",
+    "imageUrl": "Image URL",
+    "imageAlt": "Image alt text",
+    "generateImage": "Generate section image",
+    "clearImage": "Clear image",
+    "imageConfigMissing": "Image generation needs OPENAI_API_KEY, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and a public Supabase Storage bucket named generated-assets."
   },
   "apps": {
     "eyebrow": "Install state is persisted in Postgres",

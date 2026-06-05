@@ -13,6 +13,11 @@ type ThemeSection = {
   cta: string;
   visible: boolean;
   sortOrder: number;
+  type?: string;
+  layout?: string;
+  imagePosition?: string;
+  imageUrl?: string;
+  imageAlt?: string;
 };
 
 export default async function StorefrontHome() {
@@ -51,14 +56,26 @@ export default async function StorefrontHome() {
               </Link>
             </div>
           </div>
-          <div className="min-h-[360px] rounded-lg bg-[linear-gradient(135deg,#e8f2dd,#f7d7c3_48%,#c8d9ed)] shadow-2xl" />
+          {hero?.imageUrl ? (
+            <img src={hero.imageUrl} alt={hero.imageAlt || hero.title} className="min-h-[360px] rounded-lg object-cover shadow-2xl" />
+          ) : (
+            <div className="min-h-[360px] rounded-lg bg-[linear-gradient(135deg,#e8f2dd,#f7d7c3_48%,#c8d9ed)] shadow-2xl" />
+          )}
         </section>
 
         {sections.slice(1).map((section) => (
           <section key={section.id} className="px-5 lg:px-[7vw]">
-            <div className="rounded-lg border border-[#e6dfd2] bg-white p-6">
-              <h2 className="text-2xl font-black text-[#173326]">{section.title}</h2>
-              <p className="mt-2 max-w-3xl text-[#5f665f]">{section.copy}</p>
+            <div className={`grid gap-5 rounded-lg border border-[#e6dfd2] bg-white p-6 ${section.imageUrl ? "md:grid-cols-2 md:items-center" : ""}`}>
+              {section.imageUrl && section.imagePosition === "Left" ? (
+                <img src={section.imageUrl} alt={section.imageAlt || section.title} className="aspect-[4/3] w-full rounded-lg object-cover" />
+              ) : null}
+              <div>
+                <h2 className="text-2xl font-black text-[#173326]">{section.title}</h2>
+                <p className="mt-2 max-w-3xl text-[#5f665f]">{section.copy}</p>
+              </div>
+              {section.imageUrl && section.imagePosition !== "Left" ? (
+                <img src={section.imageUrl} alt={section.imageAlt || section.title} className="aspect-[4/3] w-full rounded-lg object-cover" />
+              ) : null}
             </div>
           </section>
         ))}
@@ -68,7 +85,11 @@ export default async function StorefrontHome() {
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             {products.map((product) => (
               <Link key={product.id} href={`/products/${product.handle}`} className="overflow-hidden rounded-lg border border-[#e6dfd2] bg-white">
-                <div className="h-56" style={{ background: `linear-gradient(135deg, ${product.mediaColor}, #f8e1cf)` }} />
+                {product.featuredImageUrl ? (
+                  <img src={product.featuredImageUrl} alt={product.featuredImageAlt || product.title} className="h-56 w-full object-cover" />
+                ) : (
+                  <div className="h-56" style={{ background: `linear-gradient(135deg, ${product.mediaColor}, #f8e1cf)` }} />
+                )}
                 <div className="p-4">
                   <h3 className="font-black">{product.title}</h3>
                   <p className="mt-1 text-sm text-[#697068]">

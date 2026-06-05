@@ -26,6 +26,11 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY="YOUR_SUPABASE_ANON_KEY"
 STRIPE_SECRET_KEY="sk_test_..."
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_test_..."
 STRIPE_WEBHOOK_SECRET="whsec_..."
+OPENAI_API_KEY="sk-..."
+IMAGE_GENERATION_MODEL="gpt-image-1.5"
+IMAGE_GENERATION_SIZE="1536x1024"
+IMAGE_GENERATION_QUALITY="medium"
+SUPABASE_SERVICE_ROLE_KEY="YOUR_SUPABASE_SERVICE_ROLE_KEY"
 ```
 
 Use `DATABASE_URL` for runtime traffic and `DIRECT_URL` for Prisma migrations.
@@ -74,6 +79,18 @@ Copy the generated `whsec_...` value into `.env.local` as `STRIPE_WEBHOOK_SECRET
 
 Use Stripe test card `4242 4242 4242 4242` with any future expiry and CVC.
 
+## AI Images
+
+Theme and product images can be generated from the admin when these optional keys are configured:
+
+- `OPENAI_API_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `NEXT_PUBLIC_SUPABASE_URL`
+
+Create a public Supabase Storage bucket named `generated-assets`. Generated images are uploaded under `stores/<storeId>/theme/...` or `stores/<storeId>/products/...`, then the public URL is saved to Postgres. If the image env is missing, the admin shows a clear setup warning and the storefront keeps using the existing gradient fallback.
+
+`IMAGE_GENERATION_MODEL` defaults to `gpt-image-1.5`. If your account or provider uses another image model name, set it explicitly, for example `gpt-image-1` or `image2`.
+
 ## MVP Verification
 
 ```bash
@@ -89,7 +106,9 @@ pnpm mvp:smoke
 ## Implemented Flow
 
 - Storefront home reads saved theme sections from Postgres.
+- Theme sections can store generated images, layout, image position, alt text, and prompts.
 - Collection and product pages read real products and variants.
+- Product cards and product detail pages prefer `featuredImageUrl`, with `mediaColor` as the fallback.
 - Add to cart writes `Cart` and `CartItem` rows.
 - Checkout creates a pending `Customer`, `Order`, and `OrderItem` set, then redirects to Stripe Checkout.
 - Stripe webhook marks the order as paid, decrements variant inventory, clears the cart, and writes transaction/activity rows.
