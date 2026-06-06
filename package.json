@@ -12,6 +12,8 @@
     "mvp:auth": "node scripts/check-admin-auth.mjs",
     "mvp:smoke": "node scripts/smoke-mvp.mjs",
     "images:local": "node scripts/generate-local-product-images.mjs",
+    "images:local:theme": "node scripts/generate-local-theme-images.mjs",
+    "images:local:all": "pnpm images:local && pnpm images:local:theme",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",

@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { CrudDrawer } from "@/components/admin/crud-drawer";
 import { buttonClass, fieldClass, textareaClass } from "@/components/admin/resource-actions";
-import { clearThemeSectionImage, createThemeSection, generateThemeSectionImage, saveTheme } from "@/lib/actions";
+import { clearThemeSectionImage, createThemeSection, generateLocalThemeSectionImage, generateThemeSectionImage, saveTheme } from "@/lib/actions";
 import { getHomeTheme, getStore } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
@@ -108,6 +108,7 @@ export default async function ThemePage({
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button name="sectionId" value={section.id} formAction={generateThemeSectionImage} className={buttonClass}>{t("theme.generateImage")}</button>
+                  <button name="sectionId" value={section.id} formAction={generateLocalThemeSectionImage} className="rounded-lg border border-[#d8e0d8] bg-white px-3 py-2 text-sm font-black">{t("theme.generateLocalImage")}</button>
                   <button name="sectionId" value={section.id} formAction={clearThemeSectionImage} className="rounded-lg border border-[#d8e0d8] bg-white px-3 py-2 text-sm font-black">{t("theme.clearImage")}</button>
                 </div>
               </div>

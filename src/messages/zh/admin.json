@@ -54,6 +54,7 @@
     "aiImage": "AI 商品图",
     "aiImageHelp": "生成、替换或清除前台商品图，不影响变体和结账链路。",
     "generateImage": "生成图片",
+    "generateLocalImage": "生成本地图片",
     "clearImage": "清除图片",
     "imageConfigMissing": "图片生成需要配置 OPENAI_API_KEY、NEXT_PUBLIC_SUPABASE_URL、SUPABASE_SERVICE_ROLE_KEY，并创建名为 generated-assets 的公开 Supabase Storage bucket。",
     "archiveDelete": "归档/删除"
@@ -141,6 +142,7 @@
     "imageUrl": "图片 URL",
     "imageAlt": "图片 alt 文案",
     "generateImage": "生成模块图片",
+    "generateLocalImage": "生成本地图片",
     "clearImage": "清除图片",
     "imageConfigMissing": "图片生成需要配置 OPENAI_API_KEY、NEXT_PUBLIC_SUPABASE_URL、SUPABASE_SERVICE_ROLE_KEY，并创建名为 generated-assets 的公开 Supabase Storage bucket。"
   },

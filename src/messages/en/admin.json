@@ -54,6 +54,7 @@
     "aiImage": "AI product image",
     "aiImageHelp": "Generate, replace, or clear the storefront image without affecting variants or checkout.",
     "generateImage": "Generate image",
+    "generateLocalImage": "Generate local image",
     "clearImage": "Clear image",
     "imageConfigMissing": "Image generation needs OPENAI_API_KEY, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and a public Supabase Storage bucket named generated-assets.",
     "archiveDelete": "Archive/Delete"
@@ -141,6 +142,7 @@
     "imageUrl": "Image URL",
     "imageAlt": "Image alt text",
     "generateImage": "Generate section image",
+    "generateLocalImage": "Generate local image",
     "clearImage": "Clear image",
     "imageConfigMissing": "Image generation needs OPENAI_API_KEY, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and a public Supabase Storage bucket named generated-assets."
   },

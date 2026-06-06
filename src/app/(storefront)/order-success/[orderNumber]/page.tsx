@@ -5,10 +5,13 @@ import { prisma } from "@/lib/prisma";
 
 export default async function OrderSuccessPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ orderNumber: string }>;
+  searchParams: Promise<{ mode?: string }>;
 }) {
   const { orderNumber } = await params;
+  const { mode } = await searchParams;
   const store = await getStore();
   const order = await prisma.order.findUnique({
     where: { orderNumber },
@@ -27,7 +30,7 @@ export default async function OrderSuccessPage({
             <strong>{order?.paymentStatus ?? "Pending"}</strong>.
           </p>
           <p className="mt-2 text-sm text-[#697068]">
-            Store: {store.name}. Stripe webhook updates this order to Paid when the test payment completes.
+            Store: {store.name}. {mode === "mock" ? "This demo order was paid by the local mock checkout flow." : "Stripe webhook updates this order to Paid when the test payment completes."}
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Link className="rounded-full bg-[#173326] px-5 py-3 text-sm font-black text-white" href={`/admin/orders?query=${encodeURIComponent(orderNumber)}`}>View in admin</Link>

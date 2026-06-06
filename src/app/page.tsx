@@ -57,9 +57,9 @@ export default async function StorefrontHome() {
             </div>
           </div>
           {hero?.imageUrl ? (
-            <img src={hero.imageUrl} alt={hero.imageAlt || hero.title} className="min-h-[360px] rounded-lg object-cover shadow-2xl" />
+            <img src={hero.imageUrl} alt={hero.imageAlt || hero.title} className="aspect-[16/10] min-h-[320px] w-full rounded-lg object-cover shadow-2xl" />
           ) : (
-            <div className="min-h-[360px] rounded-lg bg-[linear-gradient(135deg,#e8f2dd,#f7d7c3_48%,#c8d9ed)] shadow-2xl" />
+            <div className="aspect-[16/10] min-h-[320px] w-full rounded-lg bg-[linear-gradient(135deg,#e8f2dd,#f7d7c3_48%,#c8d9ed)] shadow-2xl" />
           )}
         </section>
 
@@ -86,9 +86,9 @@ export default async function StorefrontHome() {
             {products.map((product) => (
               <Link key={product.id} href={`/products/${product.handle}`} className="overflow-hidden rounded-lg border border-[#e6dfd2] bg-white">
                 {product.featuredImageUrl ? (
-                  <img src={product.featuredImageUrl} alt={product.featuredImageAlt || product.title} className="h-56 w-full object-cover" />
+                  <img src={product.featuredImageUrl} alt={product.featuredImageAlt || product.title} className="aspect-[4/3] w-full object-cover" />
                 ) : (
-                  <div className="h-56" style={{ background: `linear-gradient(135deg, ${product.mediaColor}, #f8e1cf)` }} />
+                  <div className="aspect-[4/3] w-full" style={{ background: `linear-gradient(135deg, ${product.mediaColor}, #f8e1cf)` }} />
                 )}
                 <div className="p-4">
                   <h3 className="font-black">{product.title}</h3>

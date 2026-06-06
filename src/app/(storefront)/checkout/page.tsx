@@ -23,7 +23,7 @@ export default async function CheckoutPage({
           {!stripeReady || error ? (
             <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-800">
               {!stripeReady
-                ? "Stripe test keys are missing. Add STRIPE_SECRET_KEY and NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY to .env.local."
+                ? "Stripe test keys are missing, so this checkout will use mock payment and still create a paid order in Admin."
                 : error === "payment-cancelled"
                   ? "Payment was cancelled. Your cart is still saved."
                   : "Stripe could not start the checkout session."}
@@ -33,8 +33,8 @@ export default async function CheckoutPage({
             <label className="grid gap-1 text-sm font-bold">Name<input name="name" defaultValue="Avery Stone" className="h-11 rounded-lg border border-[#d8d0c2] px-3" required /></label>
             <label className="grid gap-1 text-sm font-bold">Email<input name="email" defaultValue="avery@example.test" className="h-11 rounded-lg border border-[#d8d0c2] px-3" required /></label>
             <label className="grid gap-1 text-sm font-bold">Address<input name="address" defaultValue="120 Market Street" className="h-11 rounded-lg border border-[#d8d0c2] px-3" required /></label>
-            <label className="grid gap-1 text-sm font-bold">Payment method<select name="payment" className="h-11 rounded-lg border border-[#d8d0c2] px-3"><option>Stripe test checkout</option></select></label>
-            <button disabled={!stripeReady} className="mt-2 h-11 rounded-full bg-[#173326] text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-45">Pay with Stripe</button>
+            <label className="grid gap-1 text-sm font-bold">Payment method<select name="payment" className="h-11 rounded-lg border border-[#d8d0c2] px-3"><option>{stripeReady ? "Stripe test checkout" : "Mock demo payment"}</option></select></label>
+            <button className="mt-2 h-11 rounded-full bg-[#173326] text-sm font-black text-white">{stripeReady ? "Pay with Stripe" : "Place demo order"}</button>
           </div>
         </form>
         <aside className="rounded-lg border border-[#e6dfd2] bg-white p-5">

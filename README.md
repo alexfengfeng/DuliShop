@@ -49,6 +49,7 @@ pnpm mvp:env
 pnpm db:generate
 pnpm db:push
 pnpm db:seed
+pnpm images:local:all
 pnpm dev
 ```
 
@@ -67,6 +68,8 @@ MVP_ADMIN_PASSWORD="your-local-test-password" pnpm mvp:auth
 ```
 
 ## Stripe Test Webhook
+
+The storefront can be demonstrated without Stripe keys. When Stripe env is missing, checkout uses a local mock payment flow that creates a `Paid / Unfulfilled` order, decrements inventory, clears the cart, and links back to Admin Orders.
 
 For local checkout testing, run the app and Stripe CLI side by side:
 
@@ -91,6 +94,14 @@ Create a public Supabase Storage bucket named `generated-assets`. Generated imag
 
 `IMAGE_GENERATION_MODEL` defaults to `gpt-image-1.5`. If your account or provider uses another image model name, set it explicitly, for example `gpt-image-1` or `image2`.
 
+For no-API local artwork, run:
+
+```bash
+pnpm images:local:all
+```
+
+This writes SVG assets into `public/generated/products` and `public/generated/theme`, then updates Postgres so the storefront immediately uses the local images.
+
 ## MVP Verification
 
 ```bash
@@ -110,10 +121,19 @@ pnpm mvp:smoke
 - Collection and product pages read real products and variants.
 - Product cards and product detail pages prefer `featuredImageUrl`, with `mediaColor` as the fallback.
 - Add to cart writes `Cart` and `CartItem` rows.
-- Checkout creates a pending `Customer`, `Order`, and `OrderItem` set, then redirects to Stripe Checkout.
+- Checkout creates `Customer`, `Order`, and `OrderItem` rows. Without Stripe env it completes through local mock payment; with Stripe env it redirects to Stripe Checkout.
 - Stripe webhook marks the order as paid, decrements variant inventory, clears the cart, and writes transaction/activity rows.
 - Success links back to `/admin/orders?query=<orderNumber>`.
 - Admin products, orders, customers, finance, inventory, shipping, markets, reports, theme, and apps are backed by Prisma CRUD.
+
+## Demo Purchase Flow
+
+1. Open `http://localhost:3000`.
+2. Open the Linen Utility Tote product.
+3. Add one variant to cart.
+4. Go to checkout.
+5. If Stripe is not configured, choose the default mock payment and place the demo order.
+6. On success, click `View in admin` to inspect the order in `/admin/orders?query=<orderNumber>`.
 
 ## Deployment Checklist
 

@@ -32,9 +32,9 @@ export default async function CollectionPage({
           {(collection?.products ?? []).map((product) => (
             <Link key={product.id} href={`/products/${product.handle}`} className="overflow-hidden rounded-lg border border-[#e6dfd2] bg-white">
               {product.featuredImageUrl ? (
-                <img src={product.featuredImageUrl} alt={product.featuredImageAlt || product.title} className="h-56 w-full object-cover" />
+                <img src={product.featuredImageUrl} alt={product.featuredImageAlt || product.title} className="aspect-[4/3] w-full object-cover" />
               ) : (
-                <div className="h-56" style={{ background: `linear-gradient(135deg, ${product.mediaColor}, #f8e1cf)` }} />
+                <div className="aspect-[4/3] w-full" style={{ background: `linear-gradient(135deg, ${product.mediaColor}, #f8e1cf)` }} />
               )}
               <div className="p-4">
                 <h2 className="font-black">{product.title}</h2>

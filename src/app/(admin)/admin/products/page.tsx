@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { CrudDrawer } from "@/components/admin/crud-drawer";
 import { BulkToolbar } from "@/components/admin/bulk-toolbar";
 import { DeleteResourceForm, buttonClass, fieldClass, secondaryButtonClass, textareaClass } from "@/components/admin/resource-actions";
-import { adjustVariantInventory, clearProductImage, createResource, generateProductImage, updateResource } from "@/lib/actions";
+import { adjustVariantInventory, clearProductImage, createResource, generateLocalProductImage, generateProductImage, updateResource } from "@/lib/actions";
 import { getStore } from "@/lib/data";
 import { money } from "@/lib/format";
 import { translateStatus } from "@/lib/i18n-utils";
@@ -127,10 +127,16 @@ export default async function ProductsPage({
                               <textarea name="imagePrompt" defaultValue={product.imagePrompt ?? ""} placeholder={t("products.placeholders.imagePrompt")} className={textareaClass} />
                               <button className={buttonClass}>{t("products.generateImage")}</button>
                             </form>
+                            <div className="flex flex-wrap gap-2">
+                            <form action={generateLocalProductImage}>
+                              <input type="hidden" name="productId" value={product.id} />
+                              <button className={secondaryButtonClass}>{t("products.generateLocalImage")}</button>
+                            </form>
                             <form action={clearProductImage}>
                               <input type="hidden" name="productId" value={product.id} />
                               <button className={secondaryButtonClass}>{t("products.clearImage")}</button>
                             </form>
+                            </div>
                           </div>
                           <form action={createResource} className="grid gap-2 rounded-lg bg-[#f8faf8] p-3 md:grid-cols-4">
                             <input type="hidden" name="resource" value="productVariant" />

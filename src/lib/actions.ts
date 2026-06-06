@@ -1,6 +1,8 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { cookies } from "next/headers";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
@@ -13,6 +15,7 @@ import { slugify } from "@/lib/format";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getStripe } from "@/lib/stripe";
 import { isAppLocale, localeCookieName } from "@/i18n/routing";
+import { checkoutMode, orderPaymentStatusForMode } from "@/lib/checkout/mode";
 import { getCurrentStoreId, logActivity, normalizeOptionalRelation, revalidateResource } from "@/lib/admin/crud";
 import { resourceSchemas, safeReference, type ResourceName } from "@/lib/admin/schemas";
 import {
@@ -23,6 +26,8 @@ import {
   imageGenerationConfig,
   imageStoragePath,
 } from "@/lib/images/generation";
+import { localProductImageUrl, productSvg, safeAssetFileName } from "@/lib/local-art/product-art";
+import { localThemeImageUrl, themeSectionSvg } from "@/lib/local-art/theme-art";
 
 const productSchema = z.object({
   title: z.string().min(2),
@@ -187,6 +192,80 @@ async function uploadGeneratedAsset({
   };
 }
 
+async function writeLocalProductImage({
+  storeId,
+  product,
+}: {
+  storeId: string;
+  product: {
+    id: string;
+    title: string;
+    handle: string;
+    category: string;
+    mediaColor: string;
+    imagePrompt?: string | null;
+  };
+}) {
+  const fileName = `${safeAssetFileName(product.handle || product.title)}.svg`;
+  const outputDir = join(process.cwd(), "public", "generated", "products");
+  const publicUrl = localProductImageUrl(product);
+  await mkdir(outputDir, { recursive: true });
+  await writeFile(join(outputDir, fileName), productSvg(product), "utf8");
+  await prisma.imageAsset.deleteMany({
+    where: { storeId, productId: product.id, provider: "local-svg" },
+  });
+  await prisma.imageAsset.create({
+    data: {
+      storeId,
+      productId: product.id,
+      kind: "product",
+      prompt: product.imagePrompt || `Local generated product image for ${product.title}`,
+      alt: `${product.title} product image`,
+      url: publicUrl,
+      status: "Ready",
+      provider: "local-svg",
+      model: "local-product-art-v1",
+    },
+  });
+  await prisma.product.update({
+    where: { id: product.id },
+    data: { featuredImageUrl: publicUrl, featuredImageAlt: `${product.title} product image` },
+  });
+  return publicUrl;
+}
+
+async function writeLocalThemeImage({
+  storeId,
+  section,
+}: {
+  storeId: string;
+  section: ThemeSectionData;
+}) {
+  const fileName = `${safeAssetFileName(section.id || section.title)}.svg`;
+  const outputDir = join(process.cwd(), "public", "generated", "theme");
+  const publicUrl = localThemeImageUrl(section);
+  await mkdir(outputDir, { recursive: true });
+  await writeFile(join(outputDir, fileName), themeSectionSvg(section), "utf8");
+  await prisma.imageAsset.deleteMany({
+    where: { storeId, themeKey: "home", sectionId: section.id, provider: "local-svg" },
+  });
+  await prisma.imageAsset.create({
+    data: {
+      storeId,
+      themeKey: "home",
+      sectionId: section.id,
+      kind: "theme",
+      prompt: section.imagePrompt || `Local generated theme image for ${section.title}`,
+      alt: `${section.title} theme image`,
+      url: publicUrl,
+      status: "Ready",
+      provider: "local-svg",
+      model: "local-theme-art-v1",
+    },
+  });
+  return publicUrl;
+}
+
 export async function createResource(formData: FormData) {
   const storeId = await getCurrentStoreId();
   const resource = getResource(formData);
@@ -220,6 +299,9 @@ export async function createResource(formData: FormData) {
           },
         },
       });
+      if (!data.featuredImageUrl) {
+        await writeLocalProductImage({ storeId, product });
+      }
       await logActivity(storeId, "Created product", product.title);
       break;
     }
@@ -841,6 +923,18 @@ export async function clearProductImage(formData: FormData) {
   revalidatePath("/collections/all-products");
 }
 
+export async function generateLocalProductImage(formData: FormData) {
+  const storeId = await getCurrentStoreId();
+  const productId = String(formData.get("productId") || "");
+  const product = await prisma.product.findFirstOrThrow({ where: { id: productId, storeId } });
+  await writeLocalProductImage({ storeId, product });
+  await logActivity(storeId, "Generated local product image", product.title);
+  revalidatePath("/admin/products");
+  revalidatePath("/");
+  revalidatePath(`/products/${product.handle}`);
+  revalidatePath("/collections/all-products");
+}
+
 export async function generateThemeSectionImage(formData: FormData) {
   const storeId = await getCurrentStoreId();
   const sectionId = String(formData.get("sectionId") || "");
@@ -907,6 +1001,31 @@ export async function clearThemeSectionImage(formData: FormData) {
     create: { storeId, key: "home", sections: updatedSections },
   });
   await logActivity(storeId, "Cleared theme image", sectionId);
+  revalidatePath("/admin/theme");
+  revalidatePath("/");
+}
+
+export async function generateLocalThemeSectionImage(formData: FormData) {
+  const storeId = await getCurrentStoreId();
+  const sectionId = String(formData.get("sectionId") || "");
+  const theme = await getHomeTheme(storeId);
+  const sections = ((theme?.sections ?? []) as ThemeSectionData[]).sort((a, b) => a.sortOrder - b.sortOrder);
+  const section = sections.find((item) => item.id === sectionId);
+  if (!section) throw new Error("Theme section not found.");
+
+  const url = await writeLocalThemeImage({ storeId, section });
+  const updatedSections = sections.map((item) =>
+    item.id === section.id
+      ? { ...item, imageUrl: url, imageAlt: `${section.title} theme image` }
+      : item,
+  );
+
+  await prisma.themeConfig.upsert({
+    where: { storeId_key: { storeId, key: "home" } },
+    update: { sections: updatedSections },
+    create: { storeId, key: "home", sections: updatedSections },
+  });
+  await logActivity(storeId, "Generated local theme image", section.id);
   revalidatePath("/admin/theme");
   revalidatePath("/");
 }
@@ -1032,9 +1151,7 @@ export async function checkout(formData: FormData) {
   }
 
   const stripe = getStripe();
-  if (!stripe) {
-    redirect("/checkout?error=stripe-env");
-  }
+  const mode = checkoutMode({ stripeConfigured: Boolean(stripe) });
 
   const store = await getStore();
   const name = String(formData.get("name") || "Guest Customer");
@@ -1065,11 +1182,14 @@ export async function checkout(formData: FormData) {
         storeId: store.id,
         customerId: customer.id,
         orderNumber,
-        paymentStatus: "Pending",
+        paymentStatus: orderPaymentStatusForMode(mode),
         fulfillmentStatus: "Unfulfilled",
+        shippingStatus: "Not shipped",
+        riskLevel: "Low",
         channel: "Online Store",
         subtotal,
         total: subtotal,
+        paidAt: mode === "mock" ? new Date() : null,
         items: {
           create: cart.items.map((item) => ({
             productId: item.productId,
@@ -1083,22 +1203,57 @@ export async function checkout(formData: FormData) {
       },
     });
 
-    await tx.cart.update({
-      where: { id: cart.id },
-      data: { status: "Pending payment" },
-    });
+    if (mode === "mock") {
+      for (const item of cart.items) {
+        await tx.productVariant.update({
+          where: { id: item.variantId },
+          data: { inventory: { decrement: item.quantity } },
+        });
+      }
+      await tx.cart.update({
+        where: { id: cart.id },
+        data: { status: "Completed" },
+      });
+      await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+      await tx.transaction.create({
+        data: {
+          storeId: store.id,
+          reference: `MOCK-${orderNumber}`,
+          kind: "Mock checkout",
+          amount: subtotal,
+          fee: 0,
+          status: "Captured",
+        },
+      });
+    } else {
+      await tx.cart.update({
+        where: { id: cart.id },
+        data: { status: "Pending payment" },
+      });
+    }
 
     await tx.activityLog.create({
       data: {
         storeId: store.id,
         actor: name,
-        action: "Checkout session started",
+        action: mode === "mock" ? "Mock checkout completed" : "Checkout session started",
         subject: orderNumber,
       },
     });
 
     return createdOrder;
   });
+
+  if (mode === "mock") {
+    revalidatePath("/cart");
+    revalidatePath("/admin/orders");
+    revalidatePath("/admin/products");
+    redirect(`/order-success/${order.orderNumber}?mode=mock`);
+  }
+
+  if (!stripe) {
+    redirect("/checkout?error=stripe-env");
+  }
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
