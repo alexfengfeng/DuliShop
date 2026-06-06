@@ -28,6 +28,7 @@ import {
 } from "@/lib/images/generation";
 import { localProductImageUrl, productSvg, safeAssetFileName } from "@/lib/local-art/product-art";
 import { localThemeImageUrl, themeSectionSvg } from "@/lib/local-art/theme-art";
+import { normalizeThemeGrowthConfig, type ThemeGrowthConfig } from "@/lib/seo/theme-seo";
 
 const productSchema = z.object({
   title: z.string().min(2),
@@ -154,6 +155,40 @@ type ThemeSectionData = {
   imageUrl?: string;
   imageAlt?: string;
 };
+
+function serializeThemeConfig(config: ThemeGrowthConfig) {
+  return {
+    sections: config.sections,
+    seo: config.seo,
+    geo: config.geo,
+    marketSeo: config.marketSeo,
+    structuredData: config.structuredData,
+  };
+}
+
+function parseFaq(value: string) {
+  return value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [question, ...answerParts] = line.split("|");
+      return { question: question?.trim() ?? "", answer: answerParts.join("|").trim() };
+    })
+    .filter((item) => item.question && item.answer);
+}
+
+function parseMarketAlternates(value: string) {
+  return value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [market, region, language, currency, path, title, description] = line.split("|").map((part) => part.trim());
+      return { market, region, language, currency, path, title, description };
+    })
+    .filter((item) => item.market && item.language && item.path);
+}
 
 async function uploadGeneratedAsset({
   storeId,
@@ -804,6 +839,8 @@ export async function updateOrderStatus(formData: FormData) {
 
 export async function saveTheme(formData: FormData) {
   const store = await getStore();
+  const theme = await getHomeTheme(store.id);
+  const currentConfig = normalizeThemeGrowthConfig(theme?.sections);
   const sectionIds = String(formData.get("sectionIds") || "hero,collection,story")
     .split(",")
     .map((id) => id.trim())
@@ -827,20 +864,134 @@ export async function saveTheme(formData: FormData) {
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map((section, index) => ({ ...section, sortOrder: index + 1 }));
 
+  const faq = parseFaq(String(formData.get("geo.faq") || ""));
+  const alternates = parseMarketAlternates(String(formData.get("marketSeo.alternates") || ""));
+  const config = serializeThemeConfig({
+    ...currentConfig,
+    sections,
+    seo: {
+      pageTitle: String(formData.get("seo.pageTitle") || currentConfig.seo.pageTitle),
+      metaDescription: String(formData.get("seo.metaDescription") || currentConfig.seo.metaDescription),
+      canonicalPath: String(formData.get("seo.canonicalPath") || currentConfig.seo.canonicalPath),
+      ogTitle: String(formData.get("seo.ogTitle") || currentConfig.seo.ogTitle),
+      ogDescription: String(formData.get("seo.ogDescription") || currentConfig.seo.ogDescription),
+      ogImage: String(formData.get("seo.ogImage") || currentConfig.seo.ogImage),
+      twitterTitle: String(formData.get("seo.twitterTitle") || currentConfig.seo.twitterTitle),
+      twitterDescription: String(formData.get("seo.twitterDescription") || currentConfig.seo.twitterDescription),
+      robotsIndex: formData.get("seo.robotsIndex") === "on",
+      robotsFollow: formData.get("seo.robotsFollow") === "on",
+    },
+    geo: {
+      brandEntity: String(formData.get("geo.brandEntity") || currentConfig.geo.brandEntity),
+      aiSummary: String(formData.get("geo.aiSummary") || currentConfig.geo.aiSummary),
+      credibility: String(formData.get("geo.credibility") || currentConfig.geo.credibility),
+      productFacts: String(formData.get("geo.productFacts") || currentConfig.geo.productFacts),
+      faq: faq.length ? faq : currentConfig.geo.faq,
+    },
+    marketSeo: {
+      defaultMarket: String(formData.get("marketSeo.defaultMarket") || currentConfig.marketSeo.defaultMarket),
+      alternates: alternates.length ? alternates : currentConfig.marketSeo.alternates,
+    },
+    structuredData: {
+      enableOrganization: formData.get("structuredData.enableOrganization") === "on",
+      enableWebsite: formData.get("structuredData.enableWebsite") === "on",
+      enableProduct: formData.get("structuredData.enableProduct") === "on",
+      enableBreadcrumbs: formData.get("structuredData.enableBreadcrumbs") === "on",
+      enableFaq: formData.get("structuredData.enableFaq") === "on",
+    },
+  });
+
   await prisma.themeConfig.upsert({
     where: { storeId_key: { storeId: store.id, key: "home" } },
-    update: { sections },
-    create: { storeId: store.id, key: "home", sections },
+    update: { sections: config },
+    create: { storeId: store.id, key: "home", sections: config },
   });
 
   revalidatePath("/admin/theme");
   revalidatePath("/");
 }
 
+export async function saveThemeSeoSettings(formData: FormData) {
+  return saveTheme(formData);
+}
+
+export async function saveThemeGeoSettings(formData: FormData) {
+  return saveTheme(formData);
+}
+
+export async function saveMarketSeoSettings(formData: FormData) {
+  return saveTheme(formData);
+}
+
+export async function generateSeoDraftFromTheme() {
+  const store = await getStore();
+  const theme = await getHomeTheme(store.id);
+  const currentConfig = normalizeThemeGrowthConfig(theme?.sections);
+  const hero = currentConfig.sections.find((section) => section.visible) ?? currentConfig.sections[0];
+  const title = hero ? `${store.name} | ${hero.title}` : `${store.name} | Calm home goods`;
+  const description = hero?.copy || currentConfig.seo.metaDescription;
+  const config = serializeThemeConfig({
+    ...currentConfig,
+    seo: {
+      ...currentConfig.seo,
+      pageTitle: title.slice(0, 70),
+      metaDescription: description.slice(0, 170),
+      ogTitle: store.name,
+      ogDescription: description.slice(0, 170),
+      twitterTitle: title.slice(0, 70),
+      twitterDescription: description.slice(0, 170),
+      ogImage: currentConfig.seo.ogImage || hero?.imageUrl || "",
+    },
+    geo: {
+      ...currentConfig.geo,
+      aiSummary: `${store.name} sells ${currentConfig.sections
+        .filter((section) => section.visible)
+        .slice(0, 3)
+        .map((section) => section.title.toLowerCase())
+        .join(", ")} for online shoppers seeking calm everyday routines.`,
+    },
+  });
+
+  await prisma.themeConfig.upsert({
+    where: { storeId_key: { storeId: store.id, key: "home" } },
+    update: { sections: config },
+    create: { storeId: store.id, key: "home", sections: config },
+  });
+  await logActivity(store.id, "Generated SEO draft", "Theme");
+  revalidatePath("/admin/theme");
+  revalidatePath("/");
+}
+
+export async function generateLlmsContent() {
+  const store = await getStore();
+  const theme = await getHomeTheme(store.id);
+  const currentConfig = normalizeThemeGrowthConfig(theme?.sections);
+  const config = serializeThemeConfig({
+    ...currentConfig,
+    geo: {
+      ...currentConfig.geo,
+      productFacts: currentConfig.sections
+        .filter((section) => section.visible)
+        .map((section) => `${section.title}: ${section.copy}`)
+        .join(" "),
+    },
+  });
+
+  await prisma.themeConfig.upsert({
+    where: { storeId_key: { storeId: store.id, key: "home" } },
+    update: { sections: config },
+    create: { storeId: store.id, key: "home", sections: config },
+  });
+  await logActivity(store.id, "Generated llms content", "Theme");
+  revalidatePath("/admin/theme");
+  revalidatePath("/llms.txt");
+}
+
 export async function createThemeSection(formData: FormData) {
   const store = await getStore();
   const theme = await getHomeTheme(store.id);
-  const existing = ((theme?.sections ?? []) as { id: string; sortOrder: number }[]).sort((a, b) => a.sortOrder - b.sortOrder);
+  const currentConfig = normalizeThemeGrowthConfig(theme?.sections);
+  const existing = currentConfig.sections.sort((a, b) => a.sortOrder - b.sortOrder);
   const rawId = slugify(String(formData.get("id") || formData.get("title") || `section-${Date.now()}`));
   const id = existing.some((section) => section.id === rawId) ? `${rawId}-${Date.now().toString().slice(-4)}` : rawId;
   const sections = [
@@ -863,8 +1014,8 @@ export async function createThemeSection(formData: FormData) {
 
   await prisma.themeConfig.upsert({
     where: { storeId_key: { storeId: store.id, key: "home" } },
-    update: { sections },
-    create: { storeId: store.id, key: "home", sections },
+    update: { sections: serializeThemeConfig({ ...currentConfig, sections }) },
+    create: { storeId: store.id, key: "home", sections: serializeThemeConfig({ ...currentConfig, sections }) },
   });
   await prisma.activityLog.create({
     data: { storeId: store.id, actor: "Admin", action: "Created theme section", subject: id },
@@ -938,7 +1089,8 @@ export async function generateLocalProductImage(formData: FormData) {
 export async function generateThemeSectionImage(sectionId: string, formData: FormData) {
   const storeId = await getCurrentStoreId();
   const theme = await getHomeTheme(storeId);
-  const sections = ((theme?.sections ?? []) as ThemeSectionData[]).sort((a, b) => a.sortOrder - b.sortOrder);
+  const currentConfig = normalizeThemeGrowthConfig(theme?.sections);
+  const sections = currentConfig.sections.sort((a, b) => a.sortOrder - b.sortOrder);
   const section = sections.find((item) => item.id === sectionId);
   if (!section) throw new Error("Theme section not found.");
 
@@ -965,8 +1117,8 @@ export async function generateThemeSectionImage(sectionId: string, formData: For
 
   await prisma.themeConfig.upsert({
     where: { storeId_key: { storeId, key: "home" } },
-    update: { sections: updatedSections },
-    create: { storeId, key: "home", sections: updatedSections },
+    update: { sections: serializeThemeConfig({ ...currentConfig, sections: updatedSections }) },
+    create: { storeId, key: "home", sections: serializeThemeConfig({ ...currentConfig, sections: updatedSections }) },
   });
   await prisma.imageAsset.create({
     data: {
@@ -989,14 +1141,15 @@ export async function generateThemeSectionImage(sectionId: string, formData: For
 export async function clearThemeSectionImage(sectionId: string) {
   const storeId = await getCurrentStoreId();
   const theme = await getHomeTheme(storeId);
-  const sections = ((theme?.sections ?? []) as ThemeSectionData[]).sort((a, b) => a.sortOrder - b.sortOrder);
+  const currentConfig = normalizeThemeGrowthConfig(theme?.sections);
+  const sections = currentConfig.sections.sort((a, b) => a.sortOrder - b.sortOrder);
   const updatedSections = sections.map((section) =>
     section.id === sectionId ? { ...section, imageUrl: "", imageAlt: "" } : section,
   );
   await prisma.themeConfig.upsert({
     where: { storeId_key: { storeId, key: "home" } },
-    update: { sections: updatedSections },
-    create: { storeId, key: "home", sections: updatedSections },
+    update: { sections: serializeThemeConfig({ ...currentConfig, sections: updatedSections }) },
+    create: { storeId, key: "home", sections: serializeThemeConfig({ ...currentConfig, sections: updatedSections }) },
   });
   await logActivity(storeId, "Cleared theme image", sectionId);
   revalidatePath("/admin/theme");
@@ -1006,7 +1159,8 @@ export async function clearThemeSectionImage(sectionId: string) {
 export async function generateLocalThemeSectionImage(sectionId: string) {
   const storeId = await getCurrentStoreId();
   const theme = await getHomeTheme(storeId);
-  const sections = ((theme?.sections ?? []) as ThemeSectionData[]).sort((a, b) => a.sortOrder - b.sortOrder);
+  const currentConfig = normalizeThemeGrowthConfig(theme?.sections);
+  const sections = currentConfig.sections.sort((a, b) => a.sortOrder - b.sortOrder);
   const section = sections.find((item) => item.id === sectionId);
   if (!section) throw new Error("Theme section not found.");
 
@@ -1019,8 +1173,8 @@ export async function generateLocalThemeSectionImage(sectionId: string) {
 
   await prisma.themeConfig.upsert({
     where: { storeId_key: { storeId, key: "home" } },
-    update: { sections: updatedSections },
-    create: { storeId, key: "home", sections: updatedSections },
+    update: { sections: serializeThemeConfig({ ...currentConfig, sections: updatedSections }) },
+    create: { storeId, key: "home", sections: serializeThemeConfig({ ...currentConfig, sections: updatedSections }) },
   });
   await logActivity(storeId, "Generated local theme image", section.id);
   revalidatePath("/admin/theme");

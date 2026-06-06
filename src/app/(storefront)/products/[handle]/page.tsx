@@ -3,8 +3,23 @@ import { StorefrontShell } from "@/components/storefront-shell";
 import { getStore } from "@/lib/data";
 import { money } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import type { Metadata } from "next";
+import { buildBreadcrumbJsonLd, buildProductJsonLd, buildProductMetadata } from "@/lib/seo/theme-seo";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ handle: string }>;
+}): Promise<Metadata> {
+  const { handle } = await params;
+  const store = await getStore();
+  const product = await prisma.product.findUniqueOrThrow({
+    where: { storeId_handle: { storeId: store.id, handle } },
+  });
+  return buildProductMetadata({ store, product });
+}
 
 export default async function ProductPage({
   params,
@@ -20,10 +35,34 @@ export default async function ProductPage({
   const colors = Array.from(new Set(product.variants.map((variant) => variant.color)));
   const sizes = Array.from(new Set(product.variants.map((variant) => variant.size)));
   const firstVariant = product.variants[0];
+  const jsonLd = [
+    buildProductJsonLd({
+      store,
+      product: {
+        ...product,
+        variants: product.variants.map((variant) => ({
+          sku: variant.sku,
+          price: variant.price.toString(),
+          inventory: variant.inventory,
+        })),
+      },
+    }),
+    buildBreadcrumbJsonLd({
+      items: [
+        { name: "Home", path: "/" },
+        { name: product.category, path: "/collections/all-products" },
+        { name: product.title, path: `/products/${product.handle}` },
+      ],
+    }),
+  ];
 
   return (
     <StorefrontShell>
       <main className="grid gap-8 px-5 py-10 lg:grid-cols-[.95fr_.75fr] lg:px-[7vw]">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         {product.featuredImageUrl ? (
           <img src={product.featuredImageUrl} alt={product.featuredImageAlt || product.title} className="aspect-[4/3] min-h-[320px] w-full rounded-lg object-cover shadow-2xl lg:min-h-[520px]" />
         ) : (

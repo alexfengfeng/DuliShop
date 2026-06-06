@@ -1,10 +1,16 @@
 import { checkout } from "@/lib/actions";
+import type { Metadata } from "next";
 import { cartTotal, getCart } from "@/lib/data";
 import { money } from "@/lib/format";
 import { StorefrontShell } from "@/components/storefront-shell";
 import { hasStripeConfig } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Checkout | Solace Supply",
+  robots: { index: false, follow: false },
+};
 
 export default async function CheckoutPage({
   searchParams,

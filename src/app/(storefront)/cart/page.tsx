@@ -1,10 +1,16 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { updateCartItem } from "@/lib/actions";
 import { cartTotal, getCart } from "@/lib/data";
 import { money } from "@/lib/format";
 import { StorefrontShell } from "@/components/storefront-shell";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Cart | Solace Supply",
+  robots: { index: false, follow: false },
+};
 
 export default async function CartPage() {
   const cart = await getCart();

@@ -110,6 +110,24 @@ pnpm demo:reset
 
 This preserves the store and admin user, clears demo commerce rows, reseeds the catalog/admin data, and regenerates local artwork.
 
+## Theme SEO and GEO
+
+The Theme admin is also the storefront growth editor. Open `/admin/theme` after login to manage:
+
+- Layout sections, local or AI images, alt text, and desktop/mobile preview.
+- SEO page title, meta description, canonical path, Open Graph, Twitter Card, and robots settings.
+- GEO content for generative search: brand entity, AI-search summary, credibility signals, product facts, and FAQ.
+- Market GEO: default market and hreflang-style alternates, with active Markets folded into the homepage metadata.
+
+The storefront outputs dynamic metadata and JSON-LD for the home page, collection pages, and product pages. Cart and checkout are marked `noindex`.
+
+Direct checks:
+
+- `http://localhost:3000/robots.txt`
+- `http://localhost:3000/sitemap.xml`
+- `http://localhost:3000/llms.txt`
+- Product page source for Product JSON-LD, for example `/products/linen-utility-tote`
+
 ## MVP Verification
 
 ```bash
