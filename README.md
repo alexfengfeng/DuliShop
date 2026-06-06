@@ -102,6 +102,14 @@ pnpm images:local:all
 
 This writes SVG assets into `public/generated/products` and `public/generated/theme`, then updates Postgres so the storefront immediately uses the local images.
 
+To restore a clean demo store before a walkthrough, run:
+
+```bash
+pnpm demo:reset
+```
+
+This preserves the store and admin user, clears demo commerce rows, reseeds the catalog/admin data, and regenerates local artwork.
+
 ## MVP Verification
 
 ```bash
@@ -109,10 +117,12 @@ pnpm test
 pnpm lint
 pnpm build
 pnpm mvp:smoke
+pnpm e2e
 ```
 
 `pnpm mvp:smoke` expects the local app to be running on `http://localhost:3000`. Set `MVP_BASE_URL` to test a deployed preview.
 `pnpm mvp:env` requires Stripe test keys and will intentionally fail until `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, and `STRIPE_WEBHOOK_SECRET` are set.
+`pnpm e2e` runs the Playwright storefront purchase flow. It starts/reuses the local Next dev server and resets demo data before the test.
 
 ## Implemented Flow
 

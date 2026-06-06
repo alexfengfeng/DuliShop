@@ -21,6 +21,10 @@ export default async function OrdersPage({
   const statusT = await getTranslations("status");
   const { orders: allOrders } = await adminSearch(query);
   const orders = status ? allOrders.filter((order) => order.fulfillmentStatus === status || order.paymentStatus === status || order.shippingStatus === status) : allOrders;
+  const paidOrders = orders.filter((order) => order.paymentStatus === "Paid").length;
+  const openFulfillment = orders.filter((order) => order.fulfillmentStatus !== "Fulfilled" && order.fulfillmentStatus !== "Cancelled").length;
+  const orderRevenue = orders.reduce((sum, order) => sum + Number(order.total), 0);
+  const newestOrder = orders[0];
 
   return (
     <div className="grid gap-5">
@@ -31,6 +35,24 @@ export default async function OrdersPage({
       <CrudDrawer summary={common("actions.details")} title={query ? common("misc.searchFor", { query }) : common("misc.allOrders")}>
         <p className="text-sm text-[#647067]">{common("misc.records", { count: orders.length })}</p>
       </CrudDrawer>
+      <section className="grid gap-3 md:grid-cols-4">
+        <div className="rounded-lg border border-[#dfe7df] bg-white p-4">
+          <p className="text-xs font-black uppercase text-[#647067]">{t("orders.summary.filteredRevenue")}</p>
+          <p className="mt-2 text-2xl font-black text-[#173326]">{money(orderRevenue)}</p>
+        </div>
+        <div className="rounded-lg border border-[#dfe7df] bg-white p-4">
+          <p className="text-xs font-black uppercase text-[#647067]">{t("orders.summary.paidOrders")}</p>
+          <p className="mt-2 text-2xl font-black text-[#173326]">{paidOrders}</p>
+        </div>
+        <div className="rounded-lg border border-[#dfe7df] bg-white p-4">
+          <p className="text-xs font-black uppercase text-[#647067]">{t("orders.summary.fulfillmentQueue")}</p>
+          <p className="mt-2 text-2xl font-black text-[#173326]">{openFulfillment}</p>
+        </div>
+        <div className="rounded-lg border border-[#dfe7df] bg-white p-4">
+          <p className="text-xs font-black uppercase text-[#647067]">{t("orders.summary.newestOrder")}</p>
+          <p className="mt-2 text-2xl font-black text-[#173326]">{newestOrder?.orderNumber ?? t("orders.summary.none")}</p>
+        </div>
+      </section>
       <BulkToolbar resource="order" ids={orders.map((order) => order.id)} statuses={["Unfulfilled", "On hold", "Fulfilled", "Cancelled"]} label={common("misc.selected", { count: orders.length })} actionLabel={common("actions.bulkUpdate")} />
       <section className="rounded-lg border border-[#dfe7df] bg-white p-4">
         <div className="overflow-x-auto">

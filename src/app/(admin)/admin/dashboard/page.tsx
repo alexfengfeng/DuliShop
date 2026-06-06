@@ -24,6 +24,11 @@ export default async function DashboardPage() {
   const lowStock = products.flatMap((product) => product.variants).filter((variant) => variant.inventory < 10).length;
   const pendingFulfillment = orders.filter((order) => order.fulfillmentStatus !== "Fulfilled").length;
   const pendingPayments = orders.filter((order) => order.paymentStatus === "Pending").length;
+  const latestOrder = orders[0];
+  const lowStockVariants = products
+    .flatMap((product) => product.variants.map((variant) => ({ ...variant, productTitle: product.title })))
+    .filter((variant) => variant.inventory < 10)
+    .slice(0, 4);
 
   return (
     <div className="grid gap-5">
@@ -40,6 +45,28 @@ export default async function DashboardPage() {
         <MetricCard label={t("dashboard.metrics.customers")} value={String(customers.length)} detail={t("dashboard.metrics.customersDetail")} />
         <MetricCard label={t("dashboard.metrics.opsAttention")} value={String(lowStock + pendingFulfillment)} detail={t("dashboard.metrics.opsAttentionDetail")} />
       </div>
+      <section className="grid gap-3 lg:grid-cols-3">
+        <Link
+          href={latestOrder ? `/admin/orders?query=${encodeURIComponent(latestOrder.orderNumber)}` : "/admin/orders"}
+          className="rounded-lg border border-[#dfe7df] bg-white p-4"
+        >
+          <p className="text-xs font-black uppercase text-[#647067]">{t("dashboard.demo.latestOrder")}</p>
+          <h2 className="mt-2 text-xl font-black text-[#173326]">{latestOrder?.orderNumber ?? t("dashboard.demo.noOrders")}</h2>
+          <p className="mt-1 text-sm text-[#647067]">
+            {latestOrder ? `${latestOrder.customer.name} · ${money(latestOrder.total)} · ${latestOrder.fulfillmentStatus}` : t("dashboard.demo.checkoutHint")}
+          </p>
+        </Link>
+        <Link href="/admin/orders?status=Unfulfilled" className="rounded-lg border border-[#dfe7df] bg-white p-4">
+          <p className="text-xs font-black uppercase text-[#647067]">{t("dashboard.demo.fulfillmentQueue")}</p>
+          <h2 className="mt-2 text-xl font-black text-[#173326]">{t("dashboard.demo.openCount", { count: pendingFulfillment })}</h2>
+          <p className="mt-1 text-sm text-[#647067]">{t("dashboard.demo.fulfillmentHint")}</p>
+        </Link>
+        <Link href="/admin/products" className="rounded-lg border border-[#dfe7df] bg-white p-4">
+          <p className="text-xs font-black uppercase text-[#647067]">{t("dashboard.demo.lowStock")}</p>
+          <h2 className="mt-2 text-xl font-black text-[#173326]">{t("dashboard.demo.variantCount", { count: lowStock })}</h2>
+          <p className="mt-1 text-sm text-[#647067]">{lowStockVariants[0] ? t("dashboard.demo.lowStockHint", { product: lowStockVariants[0].productTitle }) : t("dashboard.demo.inventoryHealthy")}</p>
+        </Link>
+      </section>
       <section className="grid gap-4 lg:grid-cols-[1.3fr_.7fr]">
         <div className="rounded-lg border border-[#dfe7df] bg-white p-4">
           <h2 className="text-lg font-black">{t("dashboard.recentOrders")}</h2>

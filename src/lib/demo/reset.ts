@@ -1,0 +1,28 @@
+export const demoResetDeleteSteps = [
+  "shippingLabel",
+  "returnCase",
+  "fulfillment",
+  "orderItem",
+  "order",
+  "cartItem",
+  "cart",
+  "inventoryMovement",
+  "purchaseOrder",
+  "transfer",
+  "supplier",
+  "transaction",
+  "payout",
+  "chargeback",
+  "market",
+  "reportSnapshot",
+  "appInstallation",
+  "imageAsset",
+  "productVariant",
+  "product",
+  "collection",
+  "themeConfig",
+  "customer",
+  "activityLog",
+] as const;
+
+export type DemoResetDeleteStep = (typeof demoResetDeleteSteps)[number];

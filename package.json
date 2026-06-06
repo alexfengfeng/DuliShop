@@ -8,12 +8,14 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "e2e": "playwright test",
     "mvp:env": "node scripts/check-mvp-env.mjs",
     "mvp:auth": "node scripts/check-admin-auth.mjs",
     "mvp:smoke": "node scripts/smoke-mvp.mjs",
     "images:local": "node scripts/generate-local-product-images.mjs",
     "images:local:theme": "node scripts/generate-local-theme-images.mjs",
     "images:local:all": "pnpm images:local && pnpm images:local:theme",
+    "demo:reset": "node scripts/reset-demo-data.mjs && pnpm db:seed && pnpm images:local:all",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
@@ -40,6 +42,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/pg": "^8.20.0",

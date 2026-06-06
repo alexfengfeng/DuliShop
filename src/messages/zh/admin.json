@@ -29,12 +29,31 @@
       "opsAttention": "运营待处理",
       "opsAttentionDetail": "低库存加待履约队列"
     },
+    "demo": {
+      "latestOrder": "最新订单",
+      "noOrders": "暂无订单",
+      "checkoutHint": "跑一次前台结账即可创建订单。",
+      "fulfillmentQueue": "履约队列",
+      "openCount": "{count} 个待处理",
+      "fulfillmentHint": "前台已付款订单等待运营处理。",
+      "lowStock": "低库存",
+      "variantCount": "{count} 个变体",
+      "lowStockHint": "{product} 需要关注。",
+      "inventoryHealthy": "库存状态健康。"
+    },
     "recentOrders": "最近订单",
     "activity": "动态"
   },
   "orders": {
     "eyebrow": "由结账流程创建的已付款订单",
-    "title": "订单"
+    "title": "订单",
+    "summary": {
+      "filteredRevenue": "筛选销售额",
+      "paidOrders": "已付款订单",
+      "fulfillmentQueue": "履约队列",
+      "newestOrder": "最新订单",
+      "none": "无"
+    }
   },
   "products": {
     "eyebrow": "商品会同步到前台独立站",

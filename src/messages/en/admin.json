@@ -29,12 +29,31 @@
       "opsAttention": "Ops attention",
       "opsAttentionDetail": "Low stock plus fulfillment queue"
     },
+    "demo": {
+      "latestOrder": "Latest order",
+      "noOrders": "No orders yet",
+      "checkoutHint": "Run a storefront checkout to create one.",
+      "fulfillmentQueue": "Fulfillment queue",
+      "openCount": "{count} open",
+      "fulfillmentHint": "Paid storefront orders waiting for ops.",
+      "lowStock": "Low stock",
+      "variantCount": "{count} variants",
+      "lowStockHint": "{product} needs attention.",
+      "inventoryHealthy": "Inventory is healthy."
+    },
     "recentOrders": "Recent orders",
     "activity": "Activity"
   },
   "orders": {
     "eyebrow": "Paid orders created by checkout flow",
-    "title": "Orders"
+    "title": "Orders",
+    "summary": {
+      "filteredRevenue": "Filtered revenue",
+      "paidOrders": "Paid orders",
+      "fulfillmentQueue": "Fulfillment queue",
+      "newestOrder": "Newest order",
+      "none": "None"
+    }
   },
   "products": {
     "eyebrow": "Products sync to storefront",
