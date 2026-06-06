@@ -107,9 +107,9 @@ export default async function ThemePage({
                   <label className="flex items-center gap-2 text-[#9f2f20]"><input name={`${section.id}.delete`} type="checkbox" /> {common("actions.delete")}</label>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <button name="sectionId" value={section.id} formAction={generateThemeSectionImage} className={buttonClass}>{t("theme.generateImage")}</button>
-                  <button name="sectionId" value={section.id} formAction={generateLocalThemeSectionImage} className="rounded-lg border border-[#d8e0d8] bg-white px-3 py-2 text-sm font-black">{t("theme.generateLocalImage")}</button>
-                  <button name="sectionId" value={section.id} formAction={clearThemeSectionImage} className="rounded-lg border border-[#d8e0d8] bg-white px-3 py-2 text-sm font-black">{t("theme.clearImage")}</button>
+                  <button formAction={generateThemeSectionImage.bind(null, section.id)} className={buttonClass}>{t("theme.generateImage")}</button>
+                  <button formAction={generateLocalThemeSectionImage.bind(null, section.id)} className="rounded-lg border border-[#d8e0d8] bg-white px-3 py-2 text-sm font-black">{t("theme.generateLocalImage")}</button>
+                  <button formAction={clearThemeSectionImage.bind(null, section.id)} className="rounded-lg border border-[#d8e0d8] bg-white px-3 py-2 text-sm font-black">{t("theme.clearImage")}</button>
                 </div>
               </div>
             ))}

@@ -935,9 +935,8 @@ export async function generateLocalProductImage(formData: FormData) {
   revalidatePath("/collections/all-products");
 }
 
-export async function generateThemeSectionImage(formData: FormData) {
+export async function generateThemeSectionImage(sectionId: string, formData: FormData) {
   const storeId = await getCurrentStoreId();
-  const sectionId = String(formData.get("sectionId") || "");
   const theme = await getHomeTheme(storeId);
   const sections = ((theme?.sections ?? []) as ThemeSectionData[]).sort((a, b) => a.sortOrder - b.sortOrder);
   const section = sections.find((item) => item.id === sectionId);
@@ -987,9 +986,8 @@ export async function generateThemeSectionImage(formData: FormData) {
   revalidatePath("/");
 }
 
-export async function clearThemeSectionImage(formData: FormData) {
+export async function clearThemeSectionImage(sectionId: string) {
   const storeId = await getCurrentStoreId();
-  const sectionId = String(formData.get("sectionId") || "");
   const theme = await getHomeTheme(storeId);
   const sections = ((theme?.sections ?? []) as ThemeSectionData[]).sort((a, b) => a.sortOrder - b.sortOrder);
   const updatedSections = sections.map((section) =>
@@ -1005,9 +1003,8 @@ export async function clearThemeSectionImage(formData: FormData) {
   revalidatePath("/");
 }
 
-export async function generateLocalThemeSectionImage(formData: FormData) {
+export async function generateLocalThemeSectionImage(sectionId: string) {
   const storeId = await getCurrentStoreId();
-  const sectionId = String(formData.get("sectionId") || "");
   const theme = await getHomeTheme(storeId);
   const sections = ((theme?.sections ?? []) as ThemeSectionData[]).sort((a, b) => a.sortOrder - b.sortOrder);
   const section = sections.find((item) => item.id === sectionId);
